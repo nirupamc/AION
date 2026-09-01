@@ -124,6 +124,25 @@ async def evaluate_sources(
                 agg.key_present += 1
             if result.tempo_bpm is not None and result.musical_key is not None:
                 agg.both_present += 1
+            # extended Soundcharts audio counts
+            if result.time_signature is not None:
+                agg.time_signature_present += 1
+            if result.energy is not None:
+                agg.energy_present += 1
+            if result.danceability is not None:
+                agg.danceability_present += 1
+            if result.valence is not None:
+                agg.valence_present += 1
+            if result.acousticness is not None:
+                agg.acousticness_present += 1
+            if result.instrumentalness is not None:
+                agg.instrumentalness_present += 1
+            if result.liveness is not None:
+                agg.liveness_present += 1
+            if result.loudness_db is not None:
+                agg.loudness_present += 1
+            if result.speechiness is not None:
+                agg.speechiness_present += 1
             if result.latency_ms is not None:
                 agg.latencies.append(result.latency_ms)
 
@@ -136,6 +155,15 @@ async def evaluate_sources(
                 "status": result.status,
                 "tempo_bpm": result.tempo_bpm,
                 "musical_key": result.musical_key,
+                "time_signature": result.time_signature,
+                "energy": result.energy,
+                "danceability": result.danceability,
+                "valence": result.valence,
+                "acousticness": result.acousticness,
+                "instrumentalness": result.instrumentalness,
+                "liveness": result.liveness,
+                "loudness_db": result.loudness_db,
+                "speechiness": result.speechiness,
                 "confidence": result.confidence,
                 "source_identifier": result.source_identifier,
                 "match_evidence": result.match_evidence,

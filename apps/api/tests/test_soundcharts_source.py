@@ -209,6 +209,45 @@ async def test_source_token_rate_limit_propagates():
 
 
 @pytest.mark.asyncio
+async def test_source_wrapped_object_with_nested_audio(monkeypatch):
+    """Regression for 10 NO_MATCH: live API wraps payload as {type, object: {uuid, audio:{tempo,key,...}}}"""
+    async def _fake_token(*args, **kwargs):
+        return {"access_token": "tok", "token_type": "bearer", "expires_in": 3600}
+
+    monkeypatch.setattr("app.enrichment.sources.soundcharts._get_soundcharts_token", _fake_token)
+
+    with respx.mock(base_url="https://customer.api.soundcharts.com") as router:
+        router.get("/api/v2.25/song/by-isrc/USWRAPPED123").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "type": "song",
+                    "object": {
+                        "uuid": "wrapped-uuid",
+                        "name": "Wrapped Song",
+                        "audio": {
+                            "tempo": 126.82,
+                            "key": 8,
+                            "mode": 1,
+                            "timeSignature": 4,
+                            "danceability": 0.69,
+                        },
+                    },
+                    "errors": [],
+                },
+            )
+        )
+        source = SoundchartsEnrichmentSource(client_id="cid", client_secret="secret")
+        result = await source.lookup(EnrichmentQuery(track_id=1, isrc="USWRAPPED123"))
+        assert result.status == "matched"
+        assert result.tempo_bpm == 126.82
+        assert result.musical_key == "G# major"  # key 8 = G#, mode 1 = major
+        assert result.source_identifier == "wrapped-uuid"
+        assert result.match_evidence["tempo"] == 126.82
+        assert result.match_evidence["key"] == 8
+
+
+@pytest.mark.asyncio
 async def test_source_preserves_raw_metadata(monkeypatch):
     async def _fake_token(*args, **kwargs):
         return {"access_token": "tok", "token_type": "bearer", "expires_in": 3600}

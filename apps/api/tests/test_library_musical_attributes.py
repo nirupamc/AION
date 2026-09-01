@@ -181,6 +181,7 @@ def test_musical_attributes_for_returns_empty_dict_when_none(session):
 
 
 def test_musical_attributes_prefers_getsongbpm_over_soundcharts(session):
+    # M4C: preferred order flipped to soundcharts > getsongbpm
     t1, _ = _seed_library(session)
     session.add_all(
         [
@@ -203,6 +204,25 @@ def test_musical_attributes_prefers_getsongbpm_over_soundcharts(session):
                 is_current=False,
             ),
         ]
+    )
+    session.commit()
+    out = musical_attributes_for(session, [t1.id])
+    assert out[t1.id]["tempo_bpm"]["source"] == "soundcharts"
+    assert out[t1.id]["tempo_bpm"]["value"] == pytest.approx(125.0)
+
+
+def test_musical_attributes_fallback_to_getsongbpm_when_soundcharts_missing(session):
+    t1, _ = _seed_library(session)
+    session.add(
+        TrackAttribute(
+            track_id=t1.id,
+            attribute_type="tempo_bpm",
+            value_json=json.dumps(124.0),
+            source_type="catalog_api",
+            source_name="getsongbpm",
+            confidence=0.80,
+            is_current=True,
+        )
     )
     session.commit()
     out = musical_attributes_for(session, [t1.id])

@@ -48,11 +48,11 @@ def test_source_requires_api_key():
 def test_source_uses_settings_base_url_when_none(monkeypatch):
     monkeypatch.setattr(
         "app.enrichment.sources.getsongbpm.settings.getsongbpm_base_url",
-        "https://api.getsongbpm.com",
+        "https://api.getsong.co",
         raising=False,
     )
     src = GetSongBPMEnrichmentSource(api_key="k")
-    assert src._base == "https://api.getsongbpm.com"
+    assert src._base == "https://api.getsong.co"
 
 
 # --- key normalization -------------------------------------------------------
@@ -107,7 +107,7 @@ async def test_search_uses_x_api_key_header(monkeypatch):
         return httpx.Response(200, json={"search": _gsb_key_payload()})
 
     src = GetSongBPMEnrichmentSource(api_key="secret-key", min_interval=0)
-    with respx.mock(base_url="https://api.getsongbpm.com") as router:
+    with respx.mock(base_url="https://api.getsong.co") as router:
         router.get("/search/").mock(side_effect=_transport)
         router.get("/song/").mock(
             return_value=httpx.Response(
@@ -130,15 +130,15 @@ async def test_search_uses_x_api_key_header(monkeypatch):
     assert captured["path"] == "/search/"
     assert captured["api_key_query"] is None  # we do NOT use URL param auth
     assert captured["x_api_key"] == "secret-key"
-    assert captured["type"] == "song"
-    assert captured["lookup"] == "Highway to Hell AC/DC"
+    assert captured["type"] == "both"
+    assert captured["lookup"] == "song:Highway to Hell artist:AC/DC"
     assert captured["limit"] == "10"
 
 
 @pytest.mark.asyncio
 async def test_lookup_returns_no_match_when_empty():
     src = GetSongBPMEnrichmentSource(api_key="k", min_interval=0)
-    with respx.mock(base_url="https://api.getsongbpm.com") as router:
+    with respx.mock(base_url="https://api.getsong.co") as router:
         router.get("/search/").mock(return_value=httpx.Response(200, json={"search": []}))
         result = await src.lookup(
             EnrichmentQuery(track_id=1, title="Nothing", artists=["Nobody"])
@@ -157,7 +157,7 @@ async def test_lookup_returns_deferred_when_no_title():
 @pytest.mark.asyncio
 async def test_lookup_handles_provider_error_payload():
     src = GetSongBPMEnrichmentSource(api_key="k", min_interval=0)
-    with respx.mock(base_url="https://api.getsongbpm.com") as router:
+    with respx.mock(base_url="https://api.getsong.co") as router:
         router.get("/search/").mock(
             return_value=httpx.Response(200, json={"search": {"error": "Invalid API key"}})
         )
@@ -171,7 +171,7 @@ async def test_lookup_handles_provider_error_payload():
 @pytest.mark.asyncio
 async def test_lookup_handles_401():
     src = GetSongBPMEnrichmentSource(api_key="k", min_interval=0)
-    with respx.mock(base_url="https://api.getsongbpm.com") as router:
+    with respx.mock(base_url="https://api.getsong.co") as router:
         router.get("/search/").mock(return_value=httpx.Response(401, json={}))
         result = await src.lookup(
             EnrichmentQuery(track_id=1, title="x", artists=["y"])
@@ -184,7 +184,7 @@ async def test_lookup_handles_401():
 @pytest.mark.asyncio
 async def test_lookup_handles_429_with_retry_after():
     src = GetSongBPMEnrichmentSource(api_key="k", min_interval=0)
-    with respx.mock(base_url="https://api.getsongbpm.com") as router:
+    with respx.mock(base_url="https://api.getsong.co") as router:
         router.get("/search/").mock(
             return_value=httpx.Response(429, json={}, headers={"Retry-After": "5"})
         )
@@ -199,7 +199,7 @@ async def test_lookup_handles_429_with_retry_after():
 @pytest.mark.asyncio
 async def test_lookup_handles_500():
     src = GetSongBPMEnrichmentSource(api_key="k", min_interval=0)
-    with respx.mock(base_url="https://api.getsongbpm.com") as router:
+    with respx.mock(base_url="https://api.getsong.co") as router:
         router.get("/search/").mock(return_value=httpx.Response(502, json={}))
         result = await src.lookup(
             EnrichmentQuery(track_id=1, title="x", artists=["y"])
@@ -211,7 +211,7 @@ async def test_lookup_handles_500():
 @pytest.mark.asyncio
 async def test_lookup_handles_invalid_json():
     src = GetSongBPMEnrichmentSource(api_key="k", min_interval=0)
-    with respx.mock(base_url="https://api.getsongbpm.com") as router:
+    with respx.mock(base_url="https://api.getsong.co") as router:
         router.get("/search/").mock(return_value=httpx.Response(200, text="not json"))
         result = await src.lookup(
             EnrichmentQuery(track_id=1, title="x", artists=["y"])
@@ -286,7 +286,7 @@ def test_score_candidate_handles_artist_list():
 @pytest.mark.asyncio
 async def test_lookup_matched_persists_bpm_and_key():
     src = GetSongBPMEnrichmentSource(api_key="k", min_interval=0)
-    with respx.mock(base_url="https://api.getsongbpm.com") as router:
+    with respx.mock(base_url="https://api.getsong.co") as router:
         router.get("/search/").mock(
             return_value=httpx.Response(200, json={"search": _gsb_key_payload()})
         )
@@ -343,7 +343,7 @@ async def test_lookup_ambiguous_when_top_two_close():
             },
         ]
     }
-    with respx.mock(base_url="https://api.getsongbpm.com") as router:
+    with respx.mock(base_url="https://api.getsong.co") as router:
         router.get("/search/").mock(return_value=httpx.Response(200, json=payload))
         result = await src.lookup(
             EnrichmentQuery(track_id=1, title="Formation", artists=["Beyoncé"])
@@ -365,7 +365,7 @@ async def test_lookup_no_match_when_artist_mismatch():
             }
         ]
     }
-    with respx.mock(base_url="https://api.getsongbpm.com") as router:
+    with respx.mock(base_url="https://api.getsong.co") as router:
         router.get("/search/").mock(return_value=httpx.Response(200, json=payload))
         result = await src.lookup(
             EnrichmentQuery(track_id=1, title="Random Song", artists=["Beyoncé"])
@@ -384,7 +384,7 @@ async def test_lookup_uses_cache_within_ttl(monkeypatch):
         call_count["n"] += 1
         return httpx.Response(200, json={"search": _gsb_key_payload()})
 
-    with respx.mock(base_url="https://api.getsongbpm.com") as router:
+    with respx.mock(base_url="https://api.getsong.co") as router:
         router.get("/search/").mock(side_effect=_side)
         router.get("/song/").mock(
             return_value=httpx.Response(
@@ -447,7 +447,7 @@ async def test_lookup_paces_requests(monkeypatch):
         call_count["n"] += 1
         return httpx.Response(200, json=payload_a if idx == 0 else payload_b)
 
-    with respx.mock(base_url="https://api.getsongbpm.com") as router:
+    with respx.mock(base_url="https://api.getsong.co") as router:
         router.get("/search/").mock(side_effect=_transport)
         router.get("/song/").mock(
             return_value=httpx.Response(
@@ -475,3 +475,116 @@ async def test_lookup_paces_requests(monkeypatch):
     # Two paced calls @ 0.20s minimum separation => at least ~0.20s.
     assert elapsed >= 0.18
     assert call_count["n"] == 2
+
+
+# --- regression: exact host/path/header diagnostics (safe, no secrets) --------
+
+
+@pytest.mark.asyncio
+async def test_outbound_request_has_correct_host_path_and_header_names():
+    """Safe diagnostics: prove host/path/header NAMES are correct without exposing secrets."""
+    captured: dict = {}
+
+    def _transport(request: httpx.Request) -> httpx.Response:
+        captured["host"] = request.url.host
+        captured["path"] = request.url.path
+        captured["method"] = request.method
+        captured["header_names"] = [k.lower() for k in request.headers.keys()]
+        captured["query_names"] = sorted(request.url.params.keys())
+        # Do NOT capture header values or full URL
+        return httpx.Response(200, json={"search": _gsb_key_payload()})
+
+    src = GetSongBPMEnrichmentSource(api_key="secret-key", min_interval=0)
+    with respx.mock(base_url="https://api.getsong.co") as router:
+        router.get("/search/").mock(side_effect=_transport)
+        router.get("/song/").mock(
+            return_value=httpx.Response(
+                200,
+                json={"song": {"id": "abc", "title": "Highway to Hell", "tempo": "118", "key_of": "A major", "artist": {"name": "AC/DC"}}},
+            )
+        )
+        await src.lookup(EnrichmentQuery(track_id=1, title="Highway to Hell", artists=["AC/DC"]))
+
+    assert captured["host"] == "api.getsong.co"
+    assert captured["path"] == "/search/"
+    assert captured["method"] == "GET"
+    assert "x-api-key" in captured["header_names"]
+    assert "type" in captured["query_names"]
+    assert "lookup" in captured["query_names"]
+
+
+@pytest.mark.asyncio
+async def test_x_api_key_header_has_no_bearer_prefix():
+    captured: dict = {}
+
+    def _transport(request: httpx.Request) -> httpx.Response:
+        captured["x_api_key"] = request.headers.get("X-API-KEY")
+        captured["auth"] = request.headers.get("Authorization")
+        return httpx.Response(200, json={"search": _gsb_key_payload()})
+
+    src = GetSongBPMEnrichmentSource(api_key="my-secret-key", min_interval=0)
+    with respx.mock(base_url="https://api.getsong.co") as router:
+        router.get("/search/").mock(side_effect=_transport)
+        router.get("/song/").mock(return_value=httpx.Response(200, json={"song": {"id": "abc", "title": "Highway to Hell", "tempo": "118", "key_of": "A major"}}))
+        await src.lookup(EnrichmentQuery(track_id=1, title="Highway to Hell", artists=["AC/DC"]))
+
+    assert captured["x_api_key"] == "my-secret-key"
+    assert captured["x_api_key"] is not None and not captured["x_api_key"].startswith("Bearer ")
+    assert captured["auth"] is None  # must not use Authorization header
+
+
+@pytest.mark.asyncio
+async def test_query_params_passed_separately_not_in_url_string(caplog):
+    """Ensure params are passed via httpx params, not manually concatenated in URL."""
+    captured: dict = {}
+
+    def _transport(request: httpx.Request) -> httpx.Response:
+        # If URL was built manually, raw path would contain '?' — httpx separates it
+        captured["query_names"] = sorted(request.url.params.keys())
+        captured["url_string"] = str(request.url)
+        return httpx.Response(200, json={"search": []})
+
+    src = GetSongBPMEnrichmentSource(api_key="k", min_interval=0)
+    with respx.mock(base_url="https://api.getsong.co") as router:
+        router.get("/search/").mock(side_effect=_transport)
+        await src.lookup(EnrichmentQuery(track_id=1, title="Test", artists=["A"]))
+
+    assert "type" in captured["query_names"]
+    assert "lookup" in captured["query_names"]
+    assert "limit" in captured["query_names"]
+    # API key must never appear as query param
+    assert "api_key" not in captured["query_names"]
+    assert "api-key" not in captured["query_names"]
+
+
+def test_secret_never_logged(caplog):
+    import logging
+
+    # Ensure no code path logs X-API-KEY value via logging module
+    src = GetSongBPMEnrichmentSource(api_key="super-secret-xyz", min_interval=0)
+    # Internal storage naturally holds key, but repr/logging must not expose it
+    # repr check is best-effort — httpx datastructures shouldn't leak via logs
+    with caplog.at_level(logging.WARNING):
+        import pathlib
+
+        # Resolve from this test file location to ensure path works regardless of CWD
+        code_path = pathlib.Path(__file__).parent.parent / "app" / "enrichment" / "sources" / "getsongbpm.py"
+        code = code_path.read_text(encoding="utf-8")
+        assert "X-API-KEY" in code  # header is set
+        for line in code.splitlines():
+            low = line.lower()
+            if "log" in low and "api_key" in low:
+                assert "self._api_key" not in line, "potential secret logging"
+    # Ensure caplog never captured the secret
+    assert "super-secret-xyz" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_403_classified_as_authentication():
+    src = GetSongBPMEnrichmentSource(api_key="k", min_interval=0)
+    with respx.mock(base_url="https://api.getsong.co") as router:
+        router.get("/search/").mock(return_value=httpx.Response(403, json={}))
+        result = await src.lookup(EnrichmentQuery(track_id=1, title="x", artists=["y"]))
+    assert result.status == "error"
+    assert result.error_type == "authentication"
+    assert result.http_status == 403

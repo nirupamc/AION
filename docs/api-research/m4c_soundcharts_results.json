@@ -1,0 +1,63 @@
+{
+  "milestone": "M4C",
+  "generated_at": "2026-09-02T00:25:00Z",
+  "baseline": { "backend_tests": 183, "frontend_typecheck": "PASS", "frontend_build": "PASS" },
+  "live_batch": {
+    "source": "soundcharts",
+    "endpoint": "GET /api/v2.25/song/by-isrc/{isrc}",
+    "limit": 25,
+    "queried": 25,
+    "matched": 25,
+    "no_match": 0,
+    "errors": 0,
+    "ambiguous": 0,
+    "deferred": 0,
+    "attribute_coverage": {
+      "tempo_bpm": 25,
+      "musical_key": 25,
+      "time_signature": 25,
+      "energy": 25,
+      "danceability": 25,
+      "valence": 25,
+      "acousticness": 25,
+      "instrumentalness": 25,
+      "liveness": 25,
+      "loudness_db": 25,
+      "speechiness": 25
+    },
+    "overall_bpm_coverage": 1.0,
+    "matched_bpm_coverage": 1.0,
+    "overall_key_coverage": 1.0,
+    "matched_key_coverage": 1.0
+  },
+  "persistence": {
+    "inserted": 275,
+    "updated": 0,
+    "skipped": 0,
+    "analysis_version": "m4c-soundcharts-v1",
+    "attribute_types": ["tempo_bpm","musical_key","time_signature","energy","danceability","valence","acousticness","instrumentalness","liveness","loudness_db","speechiness"],
+    "coexistence": "soundcharts + getsongbpm rows coexist"
+  },
+  "idempotency": {
+    "first_run_inserted": 275,
+    "second_run_skipped": 25,
+    "second_run_queried": 0,
+    "result": "PASS"
+  },
+  "preferred_source": ["soundcharts","getsongbpm"],
+  "api_exposed": ["tempo_bpm","musical_key","time_signature","energy","danceability","valence","acousticness","instrumentalness","liveness","loudness_db","speechiness"],
+  "frontend": {
+    "table_columns": ["BPM","KEY","Energy","Source"],
+    "drawer_groups": ["MUSICAL","CHARACTER","TEXTURE"],
+    "provenance": "history preserves both sources"
+  },
+  "probe_10": {
+    "queried": 10,
+    "matched": 10,
+    "bpm_present": 9,
+    "key_present": 9,
+    "both_present": 9,
+    "median_latency_ms": 555.0
+  },
+  "tests": { "backend": 192, "frontend_typecheck": "PASS", "frontend_build": "PASS" }
+}

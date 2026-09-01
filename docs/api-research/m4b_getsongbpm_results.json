@@ -1,144 +1,350 @@
 {
-  "milestone": "M4B",
-  "provider": "getsongbpm",
-  "status": "BLOCKED \u00e2\u20ac\u201d verification pending",
-  "live_api_key_configured": false,
-  "decision": "BLOCKED (verification) \u00e2\u20ac\u201d accept as primary once a key is available",
-  "generated_at": "2026-09-01T20:40:00Z",
   "sample": {
     "file": "fixtures/enrichment/m4a_soundcharts_sample.json",
-    "size": 10,
-    "strategy": "curated 10-track sample with text-search match scoring (reused from M4A)"
+    "requested_size": 10,
+    "strategy": "curated 10-track sample with text-search match scoring",
+    "provider": "getsongbpm",
+    "analysis_version": "m4b-getsongbpm-v1"
   },
-  "live_probe": {
-    "status": "BLOCKED \u2014 GETSONGBPM_API_KEY not configured in .env",
-    "queried": 0,
-    "matched": 0,
-    "no_match": 0,
-    "ambiguous": 0,
-    "errors": 0,
-    "bpm_present": 0,
-    "key_present": 0,
-    "both_present": 0,
-    "median_latency_ms": null,
-    "note": "Run python -m app.cli getsongbpm-probe --limit 10 once GETSONGBPM_API_KEY is set in .env. Probe confirmed BLOCKED on this run.",
-    "status_detail": "CLI returned: BLOCKED \u2014 API KEY REQUIRED"
-  },
-  "coverage": {
-    "bpm": "not measured (no live key)",
-    "key": "not measured (no live key)"
-  },
-  "matching_quality": {
-    "unit_test_scenarios": [
+  "evaluation": {
+    "sources": [
       {
-        "scenario": "exact title + exact artist",
-        "expected": "matched",
-        "score": ">= 0.80"
+        "source": "getsongbpm",
+        "queried": 10,
+        "matched": 4,
+        "no_match": 5,
+        "ambiguous": 1,
+        "error": 0,
+        "deferred": 0,
+        "bpm_present": 4,
+        "key_present": 2,
+        "both_present": 2,
+        "bpm_coverage": 1.0,
+        "key_coverage": 0.5,
+        "both_coverage": 0.5,
+        "median_latency_ms": 1476.5
+      }
+    ],
+    "results": [
+      {
+        "track_id": 2630,
+        "isrc": "USMO16582593",
+        "musicbrainz_recording_id": null,
+        "spotify_id": "6b6IMqP565TbtFFZg9iFf3",
+        "source": "getsongbpm",
+        "status": "ambiguous",
+        "tempo_bpm": null,
+        "musical_key": null,
+        "confidence": null,
+        "source_identifier": null,
+        "match_evidence": {
+          "lookup": "song:I Can't Help Myself (Sugar Pie, Honey Bunch) artist:Four Tops",
+          "candidate_count": 2,
+          "from_cache": false,
+          "top_score": 0.95,
+          "second_score": 0.95,
+          "top_evidence": {
+            "title_score": 1.0,
+            "artist_score": 1.0,
+            "artist_overlap_ok": true,
+            "candidate_title": "I Can't Help Myself (Sugar Pie, Honey Bunch)",
+            "candidate_artists": [
+              "Four Tops"
+            ],
+            "candidate_duration_ms": null,
+            "duration_ok": true,
+            "aion_version_tokens": [],
+            "candidate_version_tokens": [],
+            "version_ok": true
+          },
+          "second_evidence": {
+            "title_score": 1.0,
+            "artist_score": 1.0,
+            "artist_overlap_ok": true,
+            "candidate_title": "I Can't Help Myself (Sugar Pie, Honey Bunch)",
+            "candidate_artists": [
+              "Four Tops"
+            ],
+            "candidate_duration_ms": null,
+            "duration_ok": true,
+            "aion_version_tokens": [],
+            "candidate_version_tokens": [],
+            "version_ok": true
+          },
+          "match_method": "title+artist",
+          "match_score": 0.95
+        },
+        "latency_ms": 1828.0,
+        "error": null,
+        "error_type": null,
+        "http_status": null
       },
       {
-        "scenario": "AION 'Acid Trip' vs candidate 'Acid Trip - Remix'",
-        "expected": "refused (version_ok=False)",
-        "score": "< 0.80"
+        "track_id": 2081,
+        "isrc": "USUM71119189",
+        "musicbrainz_recording_id": null,
+        "spotify_id": "2iUmqdfGZcHIhS3b9E9EWq",
+        "source": "getsongbpm",
+        "status": "matched",
+        "tempo_bpm": 154.0,
+        "musical_key": null,
+        "confidence": 0.95,
+        "source_identifier": "XoY8ok",
+        "match_evidence": {
+          "lookup": "song:Everybody Talks artist:Neon Trees",
+          "candidate_count": 1,
+          "from_cache": false,
+          "top_score": 0.95,
+          "second_score": null,
+          "top_evidence": {
+            "title_score": 1.0,
+            "artist_score": 1.0,
+            "artist_overlap_ok": true,
+            "candidate_title": "Everybody Talks",
+            "candidate_artists": [
+              "Neon Trees"
+            ],
+            "candidate_duration_ms": null,
+            "duration_ok": true,
+            "aion_version_tokens": [],
+            "candidate_version_tokens": [],
+            "version_ok": true
+          },
+          "match_method": "title+artist",
+          "match_score": 0.95
+        },
+        "latency_ms": 1766.0,
+        "error": null,
+        "error_type": null,
+        "http_status": null
       },
       {
-        "scenario": "AION 'Acid Trip (Remix)' vs candidate 'Acid Trip - Remix'",
-        "expected": "matched",
-        "score": ">= 0.80"
+        "track_id": 2138,
+        "isrc": "GBCVZ1403597",
+        "musicbrainz_recording_id": null,
+        "spotify_id": "65T1aY3I9qfNUDVAnaM9bq",
+        "source": "getsongbpm",
+        "status": "matched",
+        "tempo_bpm": 135.0,
+        "musical_key": null,
+        "confidence": 0.95,
+        "source_identifier": "wVG0Or",
+        "match_evidence": {
+          "lookup": "song:Sedona artist:Houndmouth",
+          "candidate_count": 1,
+          "from_cache": false,
+          "top_score": 0.95,
+          "second_score": null,
+          "top_evidence": {
+            "title_score": 1.0,
+            "artist_score": 1.0,
+            "artist_overlap_ok": true,
+            "candidate_title": "Sedona",
+            "candidate_artists": [
+              "Houndmouth"
+            ],
+            "candidate_duration_ms": null,
+            "duration_ok": true,
+            "aion_version_tokens": [],
+            "candidate_version_tokens": [],
+            "version_ok": true
+          },
+          "match_method": "title+artist",
+          "match_score": 0.95
+        },
+        "latency_ms": 1812.0,
+        "error": null,
+        "error_type": null,
+        "http_status": null
       },
       {
-        "scenario": "two equally strong candidates",
-        "expected": "ambiguous",
-        "score": "top - second < 0.08"
+        "track_id": 1595,
+        "isrc": "USSM11806672",
+        "musicbrainz_recording_id": null,
+        "spotify_id": "6vnfObZ4Ys70SBAtti1xZ9",
+        "source": "getsongbpm",
+        "status": "matched",
+        "tempo_bpm": 95.0,
+        "musical_key": "F minor",
+        "confidence": 0.95,
+        "source_identifier": "28YNBz",
+        "match_evidence": {
+          "lookup": "song:COFFEE BEAN artist:Travis Scott",
+          "candidate_count": 1,
+          "from_cache": false,
+          "top_score": 0.95,
+          "second_score": null,
+          "top_evidence": {
+            "title_score": 1.0,
+            "artist_score": 1.0,
+            "artist_overlap_ok": true,
+            "candidate_title": "COFFEE BEAN",
+            "candidate_artists": [
+              "Travis Scott"
+            ],
+            "candidate_duration_ms": null,
+            "duration_ok": true,
+            "aion_version_tokens": [],
+            "candidate_version_tokens": [],
+            "version_ok": true
+          },
+          "match_method": "title+artist",
+          "match_score": 0.95
+        },
+        "latency_ms": 2047.0,
+        "error": null,
+        "error_type": null,
+        "http_status": null
       },
       {
-        "scenario": "title match but no artist overlap",
-        "expected": "no_match or ambiguous",
-        "score": "< 0.80"
+        "track_id": 1912,
+        "isrc": "USSM11912586",
+        "musicbrainz_recording_id": null,
+        "spotify_id": "45S5WTQEGOB1VHr1Q4FuPl",
+        "source": "getsongbpm",
+        "status": "no_match",
+        "tempo_bpm": null,
+        "musical_key": null,
+        "confidence": null,
+        "source_identifier": null,
+        "match_evidence": {
+          "lookup": "song:Golden artist:Harry Styles",
+          "candidate_count": 0,
+          "from_cache": false,
+          "provider_error": "no result"
+        },
+        "latency_ms": 1125.0,
+        "error": null,
+        "error_type": null,
+        "http_status": null
       },
       {
-        "scenario": "duration differs > 8s",
-        "expected": "refused",
-        "score": "-0.10 penalty"
+        "track_id": 1910,
+        "isrc": "USWB11801012",
+        "musicbrainz_recording_id": null,
+        "spotify_id": "1OuN92HcVG6NVpWbeESNB3",
+        "source": "getsongbpm",
+        "status": "matched",
+        "tempo_bpm": 152.0,
+        "musical_key": "A minor",
+        "confidence": 0.95,
+        "source_identifier": "GRL1x5",
+        "match_evidence": {
+          "lookup": "song:Everybody artist:Mac Miller",
+          "candidate_count": 1,
+          "from_cache": false,
+          "top_score": 0.95,
+          "second_score": null,
+          "top_evidence": {
+            "title_score": 1.0,
+            "artist_score": 1.0,
+            "artist_overlap_ok": true,
+            "candidate_title": "Everybody",
+            "candidate_artists": [
+              "Mac Miller"
+            ],
+            "candidate_duration_ms": null,
+            "duration_ok": true,
+            "aion_version_tokens": [],
+            "candidate_version_tokens": [],
+            "version_ok": true
+          },
+          "match_method": "title+artist",
+          "match_score": 0.95
+        },
+        "latency_ms": 1891.0,
+        "error": null,
+        "error_type": null,
+        "http_status": null
+      },
+      {
+        "track_id": 2614,
+        "isrc": "GBKPL2150741",
+        "musicbrainz_recording_id": null,
+        "spotify_id": "4e11dFRYAcJyvIv9Y35ERA",
+        "source": "getsongbpm",
+        "status": "no_match",
+        "tempo_bpm": null,
+        "musical_key": null,
+        "confidence": null,
+        "source_identifier": null,
+        "match_evidence": {
+          "lookup": "song:Blue Skies artist:dexter in the newsagent",
+          "candidate_count": 0,
+          "from_cache": false,
+          "provider_error": "no result"
+        },
+        "latency_ms": 1156.0,
+        "error": null,
+        "error_type": null,
+        "http_status": null
+      },
+      {
+        "track_id": 974,
+        "isrc": "QM6P42134545",
+        "musicbrainz_recording_id": null,
+        "spotify_id": "0dgehlr08kKoyl2nG7Dhv4",
+        "source": "getsongbpm",
+        "status": "no_match",
+        "tempo_bpm": null,
+        "musical_key": null,
+        "confidence": null,
+        "source_identifier": null,
+        "match_evidence": {
+          "lookup": "song:Strange Love - Single Edit artist:Cautious Clay, Saba",
+          "candidate_count": 0,
+          "from_cache": false,
+          "provider_error": "no result"
+        },
+        "latency_ms": 844.0,
+        "error": null,
+        "error_type": null,
+        "http_status": null
+      },
+      {
+        "track_id": 740,
+        "isrc": "QMDA62294501",
+        "musicbrainz_recording_id": null,
+        "spotify_id": "7bDDYji600PxR0F921ctVN",
+        "source": "getsongbpm",
+        "status": "no_match",
+        "tempo_bpm": null,
+        "musical_key": null,
+        "confidence": null,
+        "source_identifier": null,
+        "match_evidence": {
+          "lookup": "song:Save a Soul artist:nimino",
+          "candidate_count": 0,
+          "from_cache": false,
+          "provider_error": "no result"
+        },
+        "latency_ms": 1187.0,
+        "error": null,
+        "error_type": null,
+        "http_status": null
+      },
+      {
+        "track_id": 2307,
+        "isrc": "GBUM72300639",
+        "musicbrainz_recording_id": null,
+        "spotify_id": "0aywJ1yyg6OzgFCxrrUd7R",
+        "source": "getsongbpm",
+        "status": "no_match",
+        "tempo_bpm": null,
+        "musical_key": null,
+        "confidence": null,
+        "source_identifier": null,
+        "match_evidence": {
+          "lookup": "song:She's A 10 But (Remix) (feat. Yung Gravy) artist:ARTAN, Yung Gravy",
+          "candidate_count": 0,
+          "from_cache": false,
+          "provider_error": "no result"
+        },
+        "latency_ms": 1016.0,
+        "error": null,
+        "error_type": null,
+        "http_status": null
       }
     ]
-  },
-  "production_persistence": {
-    "model": "TrackAttribute",
-    "attribute_types_written": [
-      "tempo_bpm",
-      "musical_key"
-    ],
-    "provenance": {
-      "source_type": "catalog_api",
-      "source_name": "getsongbpm",
-      "analysis_version": "m4b-getsongbpm-v1"
-    },
-    "idempotency_key": [
-      "track_id",
-      "attribute_type",
-      "source_name",
-      "analysis_version"
-    ],
-    "value_json_bpm": "json-encoded float (e.g. \"125.0\")",
-    "value_json_key": "json-encoded object {tonic, mode, display}",
-    "isolates_sources": true,
-    "promotes_to_current_only_when_no_other_current_exists": true
-  },
-  "rate_limits": {
-    "documented": "~3000 requests/hour (third-party observation)",
-    "aion_pacing_seconds": 1.0,
-    "cache_ttl_seconds": 60
-  },
-  "attribution": {
-    "required_by_provider": true,
-    "frontend_location": "footer",
-    "url": "https://getsongbpm.com",
-    "configurable_via": "GETSONGBPM_ATTRIBUTION_URL"
-  },
-  "api_endpoints": {
-    "search": "GET /search/?type=song&lookup=<query>&limit=<n>",
-    "song": "GET /song/?id=<song_id>",
-    "auth": "X-API-KEY header (preferred) or api_key URL param"
-  },
-  "frontend_changes": [
-    "library table: BPM / KEY / Source columns",
-    "filters: bpm_min / bpm_max / musical_key",
-    "detail drawer: MUSICAL ANALYSIS panel + attribute history",
-    "footer attribution to GetSongBPM"
-  ],
-  "tests": {
-    "backend_total": 174,
-    "backend_new": [
-      "tests/test_getsongbpm_source.py",
-      "tests/test_enrichment_matching.py",
-      "tests/test_enrichment_persistence.py",
-      "tests/test_library_musical_attributes.py"
-    ],
-    "backend_status": "all passing",
-    "frontend_typecheck": "passing",
-    "frontend_build": "passing"
-  },
-  "soundcharts_status": "READY (credentials present) \u00e2\u20ac\u201d runtime HTTP 401 invalid_client on token endpoint. Not debugged in M4B per brief.",
-  "recommendation": "ACCEPT AS PRIMARY once a real API key is configured and the 10-track live gate passes.",
-  "secrets": {
-    "note": "No secrets stored in this report."
-  },
-  "status_by_item": {
-    "GetSongBPM source code": "IMPLEMENTED",
-    "Matching logic": "IMPLEMENTED",
-    "Persistence code": "IMPLEMENTED",
-    "CLI commands": "IMPLEMENTED",
-    "API exposure": "IMPLEMENTED",
-    "Frontend BPM/Key UI": "IMPLEMENTED",
-    "M4B report": "IMPLEMENTED",
-    "Backend tests": "VERIFIED (174 passed)",
-    "Frontend typecheck": "VERIFIED (passing)",
-    "Frontend build": "VERIFIED (passing)",
-    "Soundcharts adapter": "PRESENT (HTTP 401 runtime, not debugged)",
-    "Live GetSongBPM probe": "BLOCKED \u2014 no GETSONGBPM_API_KEY",
-    "Production enrichment": "BLOCKED \u2014 no GETSONGBPM_API_KEY",
-    "Idempotency verification": "CODE VERIFIED, not LIVE TESTED",
-    "API output verification": "CODE VERIFIED, not LIVE TESTED",
-    "Frontend live verification": "CODE VERIFIED, not LIVE TESTED"
   }
 }

@@ -104,7 +104,7 @@ class Settings(BaseSettings):
     # Free tier: ~3000 req/hour. Backlink attribution REQUIRED.
     # Docs: https://getsongbpm.com/api
     getsongbpm_api_key: str = ""
-    getsongbpm_base_url: str = "https://api.getsongbpm.com"
+    getsongbpm_base_url: str = "https://api.getsong.co"
     # Conservative pacing — well under the documented 3000/hour free limit
     # (3000/hour ~= 0.83 req/sec). 1.0s gives a comfortable margin.
     getsongbpm_min_interval: float = 1.0
@@ -112,6 +112,7 @@ class Settings(BaseSettings):
     # for all rows created by this adapter. Bump if matching/normalization
     # logic changes.
     getsongbpm_analysis_version: str = "m4b-getsongbpm-v1"
+    soundcharts_analysis_version: str = "m4c-soundcharts-v1"
     # Optional attribution override for the frontend footer.
     getsongbpm_attribution_url: str = "https://getsongbpm.com"
 

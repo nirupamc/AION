@@ -44,6 +44,7 @@ from app.providers.musicbrainz.resolver import (
 from app.enrichment.sources.spotify_audio_features import SpotifyAudioFeaturesSource
 from app.enrichment.sources.soundcharts import SoundchartsEnrichmentSource
 from app.enrichment.sources.getsongbpm import GetSongBPMEnrichmentSource
+from app.enrichment import EnrichmentQuery
 from app.enrichment.evaluation import load_sample, queries_from_sample, evaluate_sources, write_report
 from app.enrichment.persistence import already_enriched, persist_enrichment
 from app.tracks import import_provider_tracks
@@ -619,8 +620,19 @@ async def cmd_enrich_library(args: argparse.Namespace) -> None:
             source = GetSongBPMEnrichmentSource(api_key=settings.getsongbpm_api_key)
             source_type = "catalog_api"
             analysis_version = settings.getsongbpm_analysis_version
+        elif source_name == "soundcharts":
+            if not (settings.soundcharts_client_id and settings.soundcharts_client_secret):
+                _section("ENRICH LIBRARY")
+                _kv("status", "BLOCKED — SOUNDCHARTS credentials not configured")
+                return
+            source = SoundchartsEnrichmentSource(
+                client_id=settings.soundcharts_client_id,
+                client_secret=settings.soundcharts_client_secret,
+            )
+            source_type = "catalog_api"
+            analysis_version = settings.soundcharts_analysis_version
         else:
-            print(f"ERROR: unknown source '{source_name}'. Only 'getsongbpm' is wired in M4B.")
+            print(f"ERROR: unknown source '{source_name}'. Only 'getsongbpm' and 'soundcharts' are wired.")
             sys.exit(2)
 
         limit = args.limit or 25
@@ -641,6 +653,18 @@ async def cmd_enrich_library(args: argparse.Namespace) -> None:
         _kv("dry_run", args.dry_run)
         _kv("rows_in_scope", len(rows))
 
+        # Preload ISRCs for soundcharts exact lookup
+        isrc_by_track: dict[int, str] = {}
+        if source_name == "soundcharts" and rows:
+            tids = [pt.track_id for pt in rows]
+            isrc_rows = db.execute(
+                select(TrackIdentifier.track_id, TrackIdentifier.identifier_value).where(
+                    TrackIdentifier.track_id.in_(tids),
+                    TrackIdentifier.identifier_type == "isrc",
+                )
+            ).all()
+            isrc_by_track = {tid: val for tid, val in isrc_rows}
+
         # Build queries and skip-already-enriched.
         candidates: list[tuple[ProviderTrack, EnrichmentQuery]] = []
         skipped = 0
@@ -653,11 +677,13 @@ async def cmd_enrich_library(args: argparse.Namespace) -> None:
             ):
                 skipped += 1
                 continue
+            isrc = isrc_by_track.get(pt.track_id)
             candidates.append(
                 (
                     pt,
                     EnrichmentQuery(
                         track_id=pt.track_id,
+                        isrc=isrc,
                         title=pt.raw_title,
                         artists=_artists_from_pt(pt),
                         duration_ms=pt.duration_ms,
@@ -681,6 +707,15 @@ async def cmd_enrich_library(args: argparse.Namespace) -> None:
             "bpm_present": 0,
             "key_present": 0,
             "both_present": 0,
+            "time_signature_present": 0,
+            "energy_present": 0,
+            "danceability_present": 0,
+            "valence_present": 0,
+            "acousticness_present": 0,
+            "instrumentalness_present": 0,
+            "liveness_present": 0,
+            "loudness_present": 0,
+            "speechiness_present": 0,
         }
         for pt, q in candidates:
             result = await source.lookup(q)
@@ -692,6 +727,24 @@ async def cmd_enrich_library(args: argparse.Namespace) -> None:
                 aggregate["key_present"] += 1
             if result.tempo_bpm is not None and result.musical_key is not None:
                 aggregate["both_present"] += 1
+            if getattr(result, "time_signature", None) is not None:
+                aggregate["time_signature_present"] += 1
+            if getattr(result, "energy", None) is not None:
+                aggregate["energy_present"] += 1
+            if getattr(result, "danceability", None) is not None:
+                aggregate["danceability_present"] += 1
+            if getattr(result, "valence", None) is not None:
+                aggregate["valence_present"] += 1
+            if getattr(result, "acousticness", None) is not None:
+                aggregate["acousticness_present"] += 1
+            if getattr(result, "instrumentalness", None) is not None:
+                aggregate["instrumentalness_present"] += 1
+            if getattr(result, "liveness", None) is not None:
+                aggregate["liveness_present"] += 1
+            if getattr(result, "loudness_db", None) is not None:
+                aggregate["loudness_present"] += 1
+            if getattr(result, "speechiness", None) is not None:
+                aggregate["speechiness_present"] += 1
 
             if result.status == "matched":
                 stats = persist_enrichment(
@@ -712,6 +765,16 @@ async def cmd_enrich_library(args: argparse.Namespace) -> None:
         _section("ENRICH LIBRARY — SUMMARY")
         for k, v in aggregate.items():
             _kv(k, v)
+        # overall vs matched coverage helpers
+        queried = aggregate["queried"] or 0
+        matched = aggregate["matched"] or 0
+        if queried:
+            _kv("overall_bpm_coverage", round(aggregate["bpm_present"] / queried, 3) if queried else 0)
+            _kv("overall_key_coverage", round(aggregate["key_present"] / queried, 3) if queried else 0)
+            _kv("overall_energy_coverage", round(aggregate["energy_present"] / queried, 3) if queried else 0)
+        if matched:
+            _kv("matched_bpm_coverage", round(aggregate["bpm_present"] / matched, 3) if matched else 0)
+            _kv("matched_key_coverage", round(aggregate["key_present"] / matched, 3) if matched else 0)
     finally:
         db.close()
 

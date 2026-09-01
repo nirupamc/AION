@@ -2,5 +2,188 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
-body { background: #0b0b0f; color: #f4f4f5; }
+/* ─── AION Design System ─── */
+
+:root {
+  color-scheme: dark;
+
+  /* Background layers */
+  --aion-bg: #0c0c10;
+  --aion-raised: #111116;
+  --aion-elevated: #17171d;
+  --aion-overlay: #1c1c24;
+
+  /* Borders */
+  --aion-border-subtle: rgba(255,255,255,0.04);
+  --aion-border: rgba(255,255,255,0.07);
+  --aion-border-strong: rgba(255,255,255,0.12);
+
+  /* Text */
+  --aion-text: #e8e6e1;
+  --aion-text-secondary: #a09d96;
+  --aion-text-muted: #6b6862;
+  --aion-text-faint: #4a4844;
+
+  /* Accents */
+  --aion-moss: #5a7a5a;
+  --aion-moss-bright: #7aaa6a;
+  --aion-mineral: #4a7a8a;
+  --aion-mineral-bright: #6aaabb;
+  --aion-violet: #7a5a8a;
+  --aion-violet-bright: #9a7aaa;
+  --aion-clay: #8a7a4a;
+  --aion-clay-bright: #bba85a;
+  --aion-rose: #8a5a6a;
+  --aion-rose-bright: #bb7a8a;
+  --aion-acid: #7a9a5a;
+  --aion-acid-bright: #9abb6a;
+
+  /* Graph */
+  --aion-graph-grid: rgba(255,255,255,0.04);
+  --aion-graph-axis: #6b6862;
+}
+
+/* ─── Base ─── */
+body {
+  background: var(--aion-bg);
+  color: var(--aion-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Typography ─── */
+.font-display {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.font-technical {
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  font-weight: 500;
+}
+
+/* ─── Hairline separators ─── */
+.aion-hairline {
+  border-bottom: 1px solid var(--aion-border-subtle);
+}
+
+.aion-hairline-strong {
+  border-bottom: 1px solid var(--aion-border);
+}
+
+/* ─── Surface treatments ─── */
+.aion-surface {
+  background: var(--aion-raised);
+  border: 1px solid var(--aion-border-subtle);
+}
+
+.aion-surface-elevated {
+  background: var(--aion-elevated);
+  border: 1px solid var(--aion-border);
+}
+
+.aion-surface-overlay {
+  background: var(--aion-overlay);
+  border: 1px solid var(--aion-border-strong);
+}
+
+/* ─── Data readout ─── */
+.aion-metric {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Score badges ─── */
+.aion-score-excellent { color: var(--aion-moss-bright); }
+.aion-score-strong { color: var(--aion-clay-bright); }
+.aion-score-usable { color: var(--aion-clay); }
+.aion-score-risky { color: var(--aion-rose); }
+
+/* ─── Signal bars — thin horizontal traces ─── */
+.aion-signal {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--aion-border);
+  overflow: hidden;
+}
+.aion-signal-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 200ms ease;
+}
+
+/* ─── Section labels ─── */
+.aion-section-label {
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--aion-text-muted);
+}
+
+/* ─── Focus ring ─── */
+.aion-focus:focus-visible {
+  outline: 1px solid var(--aion-acid);
+  outline-offset: 2px;
+}
+
+/* ─── Graph tooltip ─── */
+.aion-tooltip {
+  background: var(--aion-overlay);
+  border: 1px solid var(--aion-border-strong);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--aion-text);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+/* ─── Reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.14);
+}
+
+/* ─── Selection ─── */
+::selection {
+  background: rgba(122, 154, 90, 0.3);
+  color: var(--aion-text);
+}
+
+/* ─── Contour / ambient texture (subtle) ─── */
+.aion-contour {
+  position: relative;
+}
+.aion-contour::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 40%, rgba(90,122,90,0.03) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 80% 60%, rgba(74,122,138,0.02) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}

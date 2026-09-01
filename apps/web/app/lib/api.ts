@@ -10,6 +10,22 @@ export interface MusicalAttribute {
   observed_at?: string | null;
 }
 
+export interface ScoredLabel {
+  label: string;
+  score: number;
+  explanation?: string[];
+}
+
+export interface MusicCharacter {
+  dominant_mood: string | null;
+  dominant_vibe: string | null;
+  moods: ScoredLabel[];
+  vibes: ScoredLabel[];
+  set_role?: string | null;
+  source: string;
+  analysis_version: string;
+}
+
 export interface TrackItem {
   track_id: number;
   provider: string;
@@ -30,7 +46,18 @@ export interface TrackItem {
   musical_attributes: {
     tempo_bpm?: MusicalAttribute | null;
     musical_key?: MusicalAttribute | null;
+    time_signature?: MusicalAttribute | null;
+    energy?: MusicalAttribute | null;
+    danceability?: MusicalAttribute | null;
+    valence?: MusicalAttribute | null;
+    acousticness?: MusicalAttribute | null;
+    instrumentalness?: MusicalAttribute | null;
+    liveness?: MusicalAttribute | null;
+    loudness_db?: MusicalAttribute | null;
+    speechiness?: MusicalAttribute | null;
+    camelot?: (MusicalAttribute & { number?: number; letter?: string; open_key?: string; derived_from?: string }) | null;
   };
+  music_character?: MusicCharacter | null;
 }
 
 export interface TracksResponse {
@@ -46,6 +73,9 @@ export interface TracksResponse {
   bpm_min: number | null;
   bpm_max: number | null;
   musical_key: string | null;
+  camelot: string | null;
+  mood: string | null;
+  vibe: string | null;
 }
 
 export interface LibrarySummary {
@@ -96,6 +126,9 @@ export interface TracksQuery {
   bpmMin: number | null;
   bpmMax: number | null;
   musicalKey: string | null;
+  camelot: string | null;
+  mood: string | null;
+  vibe: string | null;
 }
 
 // Pure: build the query string for GET /api/tracks. Exported for testing.
@@ -111,6 +144,10 @@ export function buildTracksQuery(q: Partial<TracksQuery>): string {
   if (q.bpmMax != null) params.set("bpm_max", String(q.bpmMax));
   if (q.musicalKey && q.musicalKey.trim())
     params.set("musical_key", q.musicalKey.trim());
+  if (q.camelot && q.camelot.trim())
+    params.set("camelot", q.camelot.trim().toUpperCase());
+  if (q.mood && q.mood.trim()) params.set("mood", q.mood.trim().toLowerCase());
+  if (q.vibe && q.vibe.trim()) params.set("vibe", q.vibe.trim().toLowerCase());
   return params.toString();
 }
 
@@ -138,6 +175,75 @@ export async function fetchStatus(): Promise<StatusResponse> {
   const res = await fetch("/api/status");
   if (!res.ok) throw new Error(`Status request failed: ${res.status}`);
   return (await res.json()) as StatusResponse;
+}
+
+export interface CompatibilityResponse {
+  from_track_id: number;
+  to_track_id: number;
+  from_key: string | null;
+  to_key: string | null;
+  from_camelot: string | null;
+  to_camelot: string | null;
+  score: number;
+  relationship: string;
+  from_bpm: number | null;
+  to_bpm: number | null;
+  bpm_relationship: string | null;
+}
+
+export async function fetchCompatibility(fromId: number, toId: number): Promise<CompatibilityResponse> {
+  const res = await fetch(`/api/tracks/${fromId}/compatibility/${toId}`);
+  if (!res.ok) throw new Error(`Compatibility request failed: ${res.status}`);
+  return (await res.json()) as CompatibilityResponse;
+}
+
+export async function fetchCompatibleTracks(trackId: number, limit = 10): Promise<{ track_id: number; compatible: CompatibilityResponse[] }> {
+  const res = await fetch(`/api/tracks/${trackId}/compatible?limit=${limit}`);
+  if (!res.ok) throw new Error(`Compatible tracks request failed: ${res.status}`);
+  return (await res.json()) as { track_id: number; compatible: CompatibilityResponse[] };
+}
+
+export interface LibraryDNA {
+  total_tracks: number;
+  filtered_tracks: number;
+  enriched_tracks: number;
+  enrichment_percentage: number;
+  tempo: { average: number | null; median: number | null; min: number | null; max: number | null; dominant_range: string | null };
+  energy: { average: number | null; median: number | null };
+  danceability: { average: number | null };
+  valence: { average: number | null };
+  top_keys: Array<{ label: string; count: number; percentage: number }>;
+  top_camelots: Array<{ label: string; count: number; percentage: number }>;
+  camelot_distribution: Array<{ label: string; count: number; percentage: number }>;
+  top_moods: Array<{ label: string; count: number; percentage: number }>;
+  top_vibes: Array<{ label: string; count: number; percentage: number }>;
+  mood_distribution: Array<{ label: string; count: number; percentage: number }>;
+  vibe_distribution: Array<{ label: string; count: number; percentage: number }>;
+  set_roles: Array<{ label: string; count: number; percentage: number }>;
+}
+
+export async function fetchLibraryDNA(q: Partial<TracksQuery>): Promise<LibraryDNA> {
+  const res = await fetch(`/api/library/dna?${buildTracksQuery(q)}`);
+  if (!res.ok) throw new Error(`DNA request failed: ${res.status}`);
+  return (await res.json()) as LibraryDNA;
+}
+
+export async function fetchBpmAnalytics(q: Partial<TracksQuery>): Promise<{ buckets: Array<{ min: number; max: number; count: number; label: string }> }> {
+  const res = await fetch(`/api/library/analytics/bpm?${buildTracksQuery(q)}`);
+  if (!res.ok) throw new Error(`BPM analytics failed: ${res.status}`);
+  return (await res.json()) as { buckets: Array<{ min: number; max: number; count: number; label: string }> };
+}
+
+export async function fetchEnergyAnalytics(q: Partial<TracksQuery>): Promise<{ buckets: Array<{ min: number; max: number; count: number; label: string }> }> {
+  const res = await fetch(`/api/library/analytics/energy?${buildTracksQuery(q)}`);
+  if (!res.ok) throw new Error(`Energy analytics failed: ${res.status}`);
+  return (await res.json()) as { buckets: Array<{ min: number; max: number; count: number; label: string }> };
+}
+
+export async function fetchScatter(q: Partial<TracksQuery>): Promise<{ points: Array<{ track_id: number; title: string; artist: string; bpm: number; energy: number; key: string | null; camelot: string | null; mood: string | null; vibe: string | null; set_role: string | null }>; count: number }> {
+  const res = await fetch(`/api/library/analytics/scatter?${buildTracksQuery(q)}`);
+  if (!res.ok) throw new Error(`Scatter failed: ${res.status}`);
+  return (await res.json()) as { points: Array<{ track_id: number; title: string; artist: string; bpm: number; energy: number; key: string | null; camelot: string | null; mood: string | null; vibe: string | null; set_role: string | null }>; count: number };
 }
 
 // Pure helpers (also unit-tested in scripts/contract check).
@@ -185,7 +291,18 @@ export interface TrackDetailResponse {
   musical_attributes: {
     tempo_bpm?: MusicalAttribute | null;
     musical_key?: MusicalAttribute | null;
+    time_signature?: MusicalAttribute | null;
+    energy?: MusicalAttribute | null;
+    danceability?: MusicalAttribute | null;
+    valence?: MusicalAttribute | null;
+    acousticness?: MusicalAttribute | null;
+    instrumentalness?: MusicalAttribute | null;
+    liveness?: MusicalAttribute | null;
+    loudness_db?: MusicalAttribute | null;
+    speechiness?: MusicalAttribute | null;
+    camelot?: (MusicalAttribute & { number?: number; letter?: string; open_key?: string; derived_from?: string }) | null;
   };
+  music_character?: MusicCharacter | null;
   musical_attribute_history: TrackAttributeHistory[];
 }
 
@@ -264,5 +381,151 @@ export function formatConfidence(value: number | null | undefined): string {
   return `${pct}%`;
 }
 
+export function formatUnit(value: unknown): string {
+  if (value == null) return "—";
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return n.toFixed(2);
+}
+
+export function formatLoudness(value: unknown): string {
+  if (value == null) return "—";
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return `${n.toFixed(1)} dB`;
+}
+
+export function formatTimeSignature(value: unknown): string {
+  if (value == null) return "—";
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n <= 0) return "—";
+  return `${Math.round(n)}/4`;
+}
+
 // Re-export MUSIC_KEY_DISPLAY_RE so tests can verify the canonical pattern.
 export { MUSIC_KEY_DISPLAY_RE };
+
+// ─── Saved Flows (M11) ───
+
+export interface SavedFlowSummary {
+  id: number;
+  name: string;
+  description: string | null;
+  created_at: string | null;
+  track_count: number;
+  energy_shape: string;
+  overall_sequence_score: number | null;
+  average_transition_score: number | null;
+  minimum_transition_score: number | null;
+  status: string;
+}
+
+export interface SavedFlowTrack {
+  position: number;
+  track: {
+    track_id: number;
+    title: string | null;
+    artist: string | null;
+    bpm: number | null;
+    camelot: string | null;
+    energy: number | null;
+    dominant_mood: string | null;
+    dominant_vibe: string | null;
+  };
+  transition_from_previous: {
+    score: number;
+    components: Record<string, number> | null;
+    reasons: string[] | null;
+    warnings: string[] | null;
+  } | null;
+}
+
+export interface SavedFlowDetail extends SavedFlowSummary {
+  start_track_id: number | null;
+  target_track_count: number;
+  constraints_json: string | null;
+  optimizer_version: string | null;
+  transition_model_version: string | null;
+  sequence: SavedFlowTrack[];
+  exports: FlowExportRecord[];
+}
+
+export interface FlowExportRecord {
+  id: number;
+  provider: string;
+  external_playlist_id: string | null;
+  external_playlist_url: string | null;
+  external_playlist_name: string | null;
+  exported_track_count: number;
+  skipped_track_count: number;
+  skipped_tracks: any[];
+  status: string;
+  error_summary: string | null;
+  created_at: string | null;
+}
+
+export interface SpotifyExportResult {
+  provider: string;
+  playlist_id: string;
+  playlist_url: string;
+  playlist_name: string;
+  exported_track_count: number;
+  skipped_track_count: number;
+  skipped_tracks: any[];
+}
+
+export async function fetchSavedFlows(): Promise<{ flows: SavedFlowSummary[]; count: number }> {
+  const res = await fetch("/api/flows");
+  if (!res.ok) throw new Error(`Flows request failed: ${res.status}`);
+  return (await res.json()) as { flows: SavedFlowSummary[]; count: number };
+}
+
+export async function fetchSavedFlow(id: number): Promise<SavedFlowDetail> {
+  const res = await fetch(`/api/flows/${id}`);
+  if (!res.ok) throw new Error(`Flow request failed: ${res.status}`);
+  return (await res.json()) as SavedFlowDetail;
+}
+
+export async function saveFlow(params: {
+  name: string;
+  description?: string;
+  flow_response: any;
+  request_params: any;
+}): Promise<{ id: number; name: string; track_count: number; created_at: string | null }> {
+  const res = await fetch("/api/flows", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) throw new Error(`Save flow failed: ${res.status}`);
+  return (await res.json()) as { id: number; name: string; track_count: number; created_at: string | null };
+}
+
+export async function deleteSavedFlow(id: number): Promise<void> {
+  const res = await fetch(`/api/flows/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Delete flow failed: ${res.status}`);
+}
+
+export async function exportToSpotify(
+  flowId: number,
+  params: { playlist_name: string; description?: string; public?: boolean }
+): Promise<SpotifyExportResult> {
+  const res = await fetch(`/api/flows/${flowId}/export/spotify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `Spotify export failed: ${res.status}`);
+  }
+  return (await res.json()) as SpotifyExportResult;
+}
+
+export function downloadText(flowId: number): void {
+  window.open(`/api/flows/${flowId}/export/text`, "_blank");
+}
+
+export function downloadCsv(flowId: number): void {
+  window.open(`/api/flows/${flowId}/export/csv`, "_blank");
+}

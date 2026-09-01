@@ -155,6 +155,42 @@ def _normalize_key(value: Any, mode: Any = None) -> Optional[str]:
     return tonic
 
 
+def _normalize_unit(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        v = float(value)
+    except (ValueError, TypeError):
+        return None
+    if v < 0 or v > 1:
+        return None
+    return round(v, 4)
+
+
+def _normalize_loudness(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        v = float(value)
+    except (ValueError, TypeError):
+        return None
+    if v < -100 or v > 20:
+        return None
+    return round(v, 2)
+
+
+def _normalize_time_signature(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        v = int(value)
+    except (ValueError, TypeError):
+        return None
+    if v < 1 or v > 32:
+        return None
+    return v
+
+
 class SoundchartsEnrichmentSource:
     name = "soundcharts"
 
@@ -305,30 +341,92 @@ class SoundchartsEnrichmentSource:
         if not isinstance(data, dict):
             return EnrichmentResult(source=self.name, status="no_match")
 
-        song_uuid = data.get("uuid") or data.get("id")
+        # Soundcharts wraps payload as {"type":"song","object":{...},"errors":[]}
+        # Handle both wrapped (current API) and legacy flat shapes.
+        payload_obj = data.get("object") if isinstance(data.get("object"), dict) else data
+
+        song_uuid = payload_obj.get("uuid") or payload_obj.get("id") or data.get("uuid") or data.get("id")
         if not song_uuid:
             return EnrichmentResult(source=self.name, status="no_match")
 
-        tempo = _normalize_bpm(data.get("tempo"))
-        key_norm = _normalize_key(data.get("key"), data.get("mode"))
-        time_signature = data.get("time_signature")
+        # Audio features are nested under "audio" in current API; fall back to top-level for legacy mocks.
+        audio = payload_obj.get("audio") if isinstance(payload_obj.get("audio"), dict) else {}
+
+        tempo_raw = audio.get("tempo") if audio else None
+        if tempo_raw is None:
+            tempo_raw = payload_obj.get("tempo") if payload_obj.get("tempo") is not None else data.get("tempo")
+        tempo = _normalize_bpm(tempo_raw)
+
+        key_raw = audio.get("key") if audio and "key" in audio else payload_obj.get("key", data.get("key"))
+        mode_raw = audio.get("mode") if audio and "mode" in audio else payload_obj.get("mode", data.get("mode"))
+        key_norm = _normalize_key(key_raw, mode_raw)
+
+        time_signature = None
+        if audio and "timeSignature" in audio:
+            time_signature = audio.get("timeSignature")
+        elif audio and "time_signature" in audio:
+            time_signature = audio.get("time_signature")
+        else:
+            time_signature = payload_obj.get("time_signature") or payload_obj.get("timeSignature") or data.get("time_signature")
+
+        tempo_ev = tempo_raw
+        key_ev = key_raw
+        mode_ev = mode_raw
+
+        # Normalize time_signature + audio character fields
+        time_signature_norm = _normalize_time_signature(time_signature)
+
+        def _pick_audio(key: str) -> Any:
+            if audio and key in audio:
+                return audio[key]
+            if key in payload_obj:
+                return payload_obj[key]
+            return data.get(key)
+
+        energy = _normalize_unit(_pick_audio("energy"))
+        danceability = _normalize_unit(_pick_audio("danceability"))
+        valence = _normalize_unit(_pick_audio("valence"))
+        acousticness = _normalize_unit(_pick_audio("acousticness"))
+        instrumentalness = _normalize_unit(_pick_audio("instrumentalness"))
+        liveness = _normalize_unit(_pick_audio("liveness"))
+        speechiness = _normalize_unit(_pick_audio("speechiness"))
+        loudness_db = _normalize_loudness(_pick_audio("loudness"))
 
         evidence: dict[str, Any] = {
             "soundcharts_uuid": song_uuid,
-            "tempo": data.get("tempo"),
-            "key": data.get("key"),
-            "mode": data.get("mode"),
-            "time_signature": time_signature,
+            "tempo": tempo_ev,
+            "key": key_ev,
+            "mode": mode_ev,
+            "time_signature": time_signature_norm,
+            "energy": energy,
+            "danceability": danceability,
+            "valence": valence,
+            "acousticness": acousticness,
+            "instrumentalness": instrumentalness,
+            "liveness": liveness,
+            "loudness_db": loudness_db,
+            "speechiness": speechiness,
         }
+        # Keep raw extras for provenance if present
         for extra in ("acousticness", "danceability", "energy", "instrumentalness", "liveness", "loudness", "speechiness", "valence"):
-            if extra in data:
-                evidence[extra] = data[extra]
+            raw_val = _pick_audio(extra)
+            if raw_val is not None and extra not in evidence:
+                evidence[extra] = raw_val
 
         return EnrichmentResult(
             source=self.name,
             status="matched",
             tempo_bpm=tempo,
             musical_key=key_norm,
+            time_signature=time_signature_norm,
+            energy=energy,
+            danceability=danceability,
+            valence=valence,
+            acousticness=acousticness,
+            instrumentalness=instrumentalness,
+            liveness=liveness,
+            loudness_db=loudness_db,
+            speechiness=speechiness,
             confidence=None,
             source_identifier=song_uuid,
             match_evidence=evidence,

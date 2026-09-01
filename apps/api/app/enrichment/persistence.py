@@ -58,9 +58,9 @@ class PersistenceStats:
         }
 
 
-# Attribute-type canonicalization. BPM and key are the only attribute types we
-# persist from GetSongBPM in M4B. Each attribute type declares how its value
-# is encoded in TrackAttribute.value_json.
+# Attribute-type canonicalization. M4B persisted tempo_bpm + musical_key from
+# GetSongBPM. M4C extends to full Soundcharts audio feature set.
+# Each attribute type declares how its value is encoded in TrackAttribute.value_json.
 
 def _encode_bpm(value: Any) -> Optional[float]:
     if value is None:
@@ -113,9 +113,54 @@ def _encode_key(value: Any) -> Optional[dict[str, Any]]:
     }
 
 
+def _encode_unit(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        v = float(value)
+    except (ValueError, TypeError):
+        return None
+    if v < 0 or v > 1:
+        return None
+    return round(v, 4)
+
+
+def _encode_loudness(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        v = float(value)
+    except (ValueError, TypeError):
+        return None
+    if v < -100 or v > 20:
+        return None
+    return round(v, 2)
+
+
+def _encode_time_signature(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        v = int(value)
+    except (ValueError, TypeError):
+        return None
+    if v < 1 or v > 32:
+        return None
+    return v
+
+
 _ATTRIBUTE_ENCODERS = {
     "tempo_bpm": _encode_bpm,
     "musical_key": _encode_key,
+    "time_signature": _encode_time_signature,
+    "energy": _encode_unit,
+    "danceability": _encode_unit,
+    "valence": _encode_unit,
+    "acousticness": _encode_unit,
+    "instrumentalness": _encode_unit,
+    "liveness": _encode_unit,
+    "loudness_db": _encode_loudness,
+    "speechiness": _encode_unit,
 }
 
 
@@ -188,6 +233,15 @@ def persist_enrichment(
     candidates: list[tuple[str, Any]] = [
         ("tempo_bpm", result.tempo_bpm),
         ("musical_key", result.musical_key),
+        ("time_signature", getattr(result, "time_signature", None)),
+        ("energy", getattr(result, "energy", None)),
+        ("danceability", getattr(result, "danceability", None)),
+        ("valence", getattr(result, "valence", None)),
+        ("acousticness", getattr(result, "acousticness", None)),
+        ("instrumentalness", getattr(result, "instrumentalness", None)),
+        ("liveness", getattr(result, "liveness", None)),
+        ("loudness_db", getattr(result, "loudness_db", None)),
+        ("speechiness", getattr(result, "speechiness", None)),
     ]
 
     for attribute_type, raw_value in candidates:
@@ -252,23 +306,16 @@ def already_enriched(
     """Return True if any TrackAttribute row already exists for this upsert key.
 
     Used by the batch command to skip tracks that were already processed.
+    Checks all attribute types — a track is considered enriched if *any*
+    attribute of this source/version exists (not just tempo/key).
     """
-    return (
-        _find_existing(
+    for attr_type in _ATTRIBUTE_ENCODERS.keys():
+        if _find_existing(
             session,
             track_id=track_id,
-            attribute_type="tempo_bpm",
+            attribute_type=attr_type,
             source_name=source_name,
             analysis_version=analysis_version,
-        )
-        is not None
-    ) or (
-        _find_existing(
-            session,
-            track_id=track_id,
-            attribute_type="musical_key",
-            source_name=source_name,
-            analysis_version=analysis_version,
-        )
-        is not None
-    )
+        ) is not None:
+            return True
+    return False

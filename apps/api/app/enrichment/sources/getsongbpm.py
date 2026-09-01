@@ -1,7 +1,7 @@
 """GetSongBPM enrichment source for M4B.
 
 Implements the documented GetSongBPM REST API:
-  Base URL: https://api.getsongbpm.com
+  Base URL: https://api.getsong.co
   Auth:     api_key URL parameter OR X-API-KEY header
   Endpoints:
     GET /search/?type={song|artist|both}&lookup=<query>&limit=<n>
@@ -370,13 +370,16 @@ class GetSongBPMEnrichmentSource:
                 error="missing AION title; cannot text-search",
             )
 
-        # Use primary artist only as part of the lookup string to widen the
-        # search when title alone is too generic. The provider's "song"
-        # search is the most precise type, so prefer it.
+        # Use prefixed lookup matching the verified working shape:
+        #   GET https://api.getsong.co/search/?type=both&lookup=song:<title> artist:<artist>
+        # This is the form validated against the live API (type=both + song:/artist: prefixes).
         primary_artist = ""
         if query.artists:
             primary_artist = (query.artists[0] or "").strip()
-        lookup_str = aion_title if not primary_artist else f"{aion_title} {primary_artist}"
+        if primary_artist:
+            lookup_str = f"song:{aion_title} artist:{primary_artist}"
+        else:
+            lookup_str = f"song:{aion_title}"
 
         # Lookup keys are normalized to maximize cache hit rate.
         cache_key = (
@@ -390,7 +393,7 @@ class GetSongBPMEnrichmentSource:
                 payload = await self._get(
                     "/search/",
                     {
-                        "type": "song",
+                        "type": "both",
                         "lookup": lookup_str,
                         "limit": DEFAULT_SEARCH_LIMIT,
                     },
@@ -425,6 +428,20 @@ class GetSongBPMEnrichmentSource:
         # The /search/ endpoint nests results under "search" for type=song.
         candidates = payload.get("search")
         if isinstance(candidates, dict) and "error" in candidates:
+            err_msg = str(candidates.get("error") or "").strip().lower()
+            # API returns {"search":{"error":"no result"}} for zero hits — treat as no_match, not system error
+            if err_msg in ("no result", "no results", "not found"):
+                return EnrichmentResult(
+                    source=self.name,
+                    status="no_match",
+                    source_identifier=None,
+                    match_evidence={
+                        "lookup": lookup_str,
+                        "candidate_count": 0,
+                        "from_cache": from_cache,
+                        "provider_error": str(candidates.get("error")),
+                    },
+                )
             return EnrichmentResult(
                 source=self.name,
                 status="error",

@@ -41,6 +41,16 @@ class EnrichmentResult:
     status: str  # matched | no_match | ambiguous | error | deferred
     tempo_bpm: Optional[float] = None
     musical_key: Optional[str] = None  # normalized "Tonic mode", e.g. "A minor"
+    # Soundcharts extended audio attributes (all Optional)
+    time_signature: Optional[int] = None
+    energy: Optional[float] = None
+    danceability: Optional[float] = None
+    valence: Optional[float] = None
+    acousticness: Optional[float] = None
+    instrumentalness: Optional[float] = None
+    liveness: Optional[float] = None
+    loudness_db: Optional[float] = None
+    speechiness: Optional[float] = None
     confidence: Optional[float] = None
     source_identifier: Optional[str] = None
     match_evidence: dict[str, Any] = field(default_factory=dict)
@@ -113,6 +123,21 @@ def key_agreement(a: Optional[str], b: Optional[str]) -> Optional[str]:
 
 # ---- aggregation ----
 
+# Canonical Soundcharts attribute list (also used for coverage)
+SOUNDCHARTS_ATTRIBUTE_NAMES: tuple[str, ...] = (
+    "tempo_bpm",
+    "musical_key",
+    "time_signature",
+    "energy",
+    "danceability",
+    "valence",
+    "acousticness",
+    "instrumentalness",
+    "liveness",
+    "loudness_db",
+    "speechiness",
+)
+
 @dataclass
 class EnrichmentAggregate:
     source: str
@@ -125,6 +150,16 @@ class EnrichmentAggregate:
     bpm_present: int = 0
     key_present: int = 0
     both_present: int = 0
+    # extended per-attribute counts
+    time_signature_present: int = 0
+    energy_present: int = 0
+    danceability_present: int = 0
+    valence_present: int = 0
+    acousticness_present: int = 0
+    instrumentalness_present: int = 0
+    liveness_present: int = 0
+    loudness_present: int = 0
+    speechiness_present: int = 0
     latencies: list[float] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
@@ -142,6 +177,35 @@ class EnrichmentAggregate:
             "bpm_coverage": (self.bpm_present / self.matched) if self.matched else 0.0,
             "key_coverage": (self.key_present / self.matched) if self.matched else 0.0,
             "both_coverage": (self.both_present / self.matched) if self.matched else 0.0,
+            # overall coverage (queried denominator) — fixes previous semantics where 4/4 looked like 100%
+            "overall_bpm_coverage": (self.bpm_present / self.queried) if self.queried else 0.0,
+            "overall_key_coverage": (self.key_present / self.queried) if self.queried else 0.0,
+            "overall_both_coverage": (self.both_present / self.queried) if self.queried else 0.0,
+            "matched_bpm_coverage": (self.bpm_present / self.matched) if self.matched else 0.0,
+            "matched_key_coverage": (self.key_present / self.matched) if self.matched else 0.0,
+            # extended coverage both denominators
+            "time_signature_present": self.time_signature_present,
+            "energy_present": self.energy_present,
+            "danceability_present": self.danceability_present,
+            "valence_present": self.valence_present,
+            "acousticness_present": self.acousticness_present,
+            "instrumentalness_present": self.instrumentalness_present,
+            "liveness_present": self.liveness_present,
+            "loudness_present": self.loudness_present,
+            "speechiness_present": self.speechiness_present,
+            "overall_time_signature_coverage": (self.time_signature_present / self.queried) if self.queried else 0.0,
+            "overall_energy_coverage": (self.energy_present / self.queried) if self.queried else 0.0,
+            "overall_danceability_coverage": (self.danceability_present / self.queried) if self.queried else 0.0,
+            "overall_valence_coverage": (self.valence_present / self.queried) if self.queried else 0.0,
+            "overall_acousticness_coverage": (self.acousticness_present / self.queried) if self.queried else 0.0,
+            "overall_instrumentalness_coverage": (self.instrumentalness_present / self.queried) if self.queried else 0.0,
+            "overall_liveness_coverage": (self.liveness_present / self.queried) if self.queried else 0.0,
+            "overall_loudness_coverage": (self.loudness_present / self.queried) if self.queried else 0.0,
+            "overall_speechiness_coverage": (self.speechiness_present / self.queried) if self.queried else 0.0,
+            "matched_time_signature_coverage": (self.time_signature_present / self.matched) if self.matched else 0.0,
+            "matched_energy_coverage": (self.energy_present / self.matched) if self.matched else 0.0,
+            "matched_danceability_coverage": (self.danceability_present / self.matched) if self.matched else 0.0,
+            "matched_valence_coverage": (self.valence_present / self.matched) if self.matched else 0.0,
             "median_latency_ms": _median(self.latencies) if self.latencies else None,
         }
         return d

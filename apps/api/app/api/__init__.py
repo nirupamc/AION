@@ -37,11 +37,43 @@ from app.tracks import (
     latest_local_saved_at,
 )
 from app.api import library as library_routes
+from app.api import flows as flows_routes
 
 log = logging.getLogger(__name__)
 
 router = APIRouter()
 router.include_router(library_routes.library_router)
+router.include_router(flows_routes.flows_router)
+
+
+@router.post("/smart-flow")
+def smart_flow(req: dict, db: Session = Depends(get_db)) -> dict:
+    from app.smart_flow.models import SmartFlowRequest
+    from app.smart_flow.service import generate_smart_flow
+
+    try:
+        parsed = SmartFlowRequest(**req)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    # Validate shape
+    if parsed.energy_shape not in ["maintain","build","drop","wave","peak_middle","peak_end"]:
+        raise HTTPException(status_code=400, detail="invalid energy_shape")
+    return generate_smart_flow(db, parsed)
+
+
+@router.post("/smart-flow/preview")
+def smart_flow_preview(req: dict, db: Session = Depends(get_db)) -> dict:
+    from app.smart_flow.models import SmartFlowRequest
+    from app.smart_flow.service import generate_smart_flow
+
+    try:
+        parsed = SmartFlowRequest(**req)
+        # preview caps candidate pool
+        if parsed.target_track_count > 10:
+            parsed.target_track_count = 10
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return generate_smart_flow(db, parsed)
 
 
 # ---- auth ----

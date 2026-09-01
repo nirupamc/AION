@@ -29,9 +29,10 @@ from app.models import ProviderTrack, Track, TrackAttribute, TrackIdentifier, Tr
 # multiple TrackAttribute rows of the same type exist for a track. The first
 # matching source_name wins. This is purely a presentation rule; backend
 # persistence never deletes the other rows.
+# M4C: Soundcharts is primary high-coverage source; GetSongBPM is fallback.
 PREFERRED_MUSIC_SOURCES: tuple[str, ...] = (
-    "getsongbpm",
     "soundcharts",
+    "getsongbpm",
     "spotify_audio_features",
     "essentia",
 )
@@ -78,6 +79,7 @@ class TrackItem(BaseModel):
     saved_at: Optional[str]
     imported_at: Optional[str]
     musical_attributes: dict[str, Optional[dict[str, Any]]] = {}
+    music_character: Optional[dict[str, Any]] = None
 
 
 class TracksPage(BaseModel):
@@ -93,6 +95,9 @@ class TracksPage(BaseModel):
     bpm_min: Optional[int] = None
     bpm_max: Optional[int] = None
     musical_key: Optional[str] = None
+    camelot: Optional[str] = None
+    mood: Optional[str] = None
+    vibe: Optional[str] = None
 
 
 @dataclass
@@ -106,6 +111,9 @@ class ListParams:
     bpm_min: Optional[int] = None
     bpm_max: Optional[int] = None
     musical_key: Optional[str] = None
+    camelot: Optional[str] = None
+    mood: Optional[str] = None
+    vibe: Optional[str] = None
 
 
 # ---- parsing helpers (graceful fallbacks) ----
@@ -188,13 +196,17 @@ def _serialize(
     isrc_by_track: dict[int, str],
     mb_by_track: dict[int, str],
     music_by_track: Optional[dict[int, dict[str, Optional[dict[str, Any]]]]] = None,
+    character_by_track: Optional[dict[int, Optional[dict[str, Any]]]] = None,
 ) -> TrackItem:
     raw = _parse_raw_metadata(pt.raw_metadata)
     title = pt.raw_title or _clean_str(raw.get("name")) or "(untitled)"
     music = (music_by_track or {}).get(pt.track_id) or {
-        "tempo_bpm": None,
-        "musical_key": None,
+        attr: None for attr in _MUSIC_ATTRIBUTE_TYPES
     }
+    # ensure camelot key exists in fallback
+    if "camelot" not in music:
+        music["camelot"] = None
+    character = (character_by_track or {}).get(pt.track_id)
     return TrackItem(
         track_id=pt.track_id,
         provider=pt.provider,
@@ -213,6 +225,7 @@ def _serialize(
         saved_at=_iso(pt.saved_at),
         imported_at=_iso(pt.imported_at),
         musical_attributes=music,
+        music_character=character,
     )
 
 
@@ -269,34 +282,92 @@ def list_tracks(session: Session, *, params: ListParams) -> TracksPage:
         bpm_min=params.bpm_min,
         bpm_max=params.bpm_max,
         musical_key=params.musical_key,
+        camelot=params.camelot,
     )
 
-    total = session.scalar(
-        select(func.count()).select_from(filtered.subquery())
-    ) or 0
+    # Mood/vibe are derived (not persisted), so handle via Python post-filter
+    mood_filter = (params.mood or "").strip().lower() if params.mood else None
+    vibe_filter = (params.vibe or "").strip().lower() if params.vibe else None
 
-    total_pages = (total + params.page_size - 1) // params.page_size if total else 0
+    if mood_filter or vibe_filter:
+        # Fetch all candidates matching other filters (cap 2000 for performance)
+        all_rows = session.execute(_apply_sort(filtered, sort=params.sort)).scalars().all()
+        # Compute characters for all
+        tids_all = [pt.track_id for pt in all_rows]
+        # Batch to avoid large IN query
+        music_map = musical_attributes_for(session, list(set(tids_all)))
+        char_map = {}
+        for tid in set(tids_all):
+            char_map[tid] = _music_character_for_attrs(music_map.get(tid, {}))
+        # Filter rows by dominant mood/vibe
+        filtered_rows = []
+        for pt in all_rows:
+            char = char_map.get(pt.track_id)
+            if not char:
+                continue
+            if mood_filter and (char.get("dominant_mood") or "").lower() != mood_filter:
+                # also check if mood appears in moods list above threshold
+                moods = [m["label"].lower() for m in char.get("moods", [])]
+                if mood_filter not in moods:
+                    continue
+            if vibe_filter and (char.get("dominant_vibe") or "").lower() != vibe_filter:
+                vibes = [v["label"].lower() for v in char.get("vibes", [])]
+                if vibe_filter not in vibes:
+                    continue
+            filtered_rows.append(pt)
+        total = len(filtered_rows)
+        total_pages = (total + params.page_size - 1) // params.page_size if total else 0
+        if total == 0:
+            return TracksPage(
+                items=[],
+                page=params.page,
+                page_size=params.page_size,
+                total=0,
+                total_pages=0,
+                sort=params.sort,
+                provider=params.provider,
+                has_isrc=params.has_isrc,
+                search=params.search,
+                bpm_min=params.bpm_min,
+                bpm_max=params.bpm_max,
+                musical_key=params.musical_key,
+                camelot=params.camelot,
+                mood=params.mood,
+                vibe=params.vibe,
+            )
+        # paginate in Python
+        start = (params.page - 1) * params.page_size
+        rows = filtered_rows[start : start + params.page_size]
+    else:
+        total = session.scalar(
+            select(func.count()).select_from(filtered.subquery())
+        ) or 0
 
-    if total == 0:
-        return TracksPage(
-            items=[],
-            page=params.page,
-            page_size=params.page_size,
-            total=0,
-            total_pages=0,
-            sort=params.sort,
-            provider=params.provider,
-            has_isrc=params.has_isrc,
-            search=params.search,
-            bpm_min=params.bpm_min,
-            bpm_max=params.bpm_max,
-            musical_key=params.musical_key,
-        )
+        total_pages = (total + params.page_size - 1) // params.page_size if total else 0
 
-    ordered = _apply_sort(filtered, sort=params.sort)
-    rows = session.execute(
-        ordered.offset((params.page - 1) * params.page_size).limit(params.page_size)
-    ).scalars().all()
+        if total == 0:
+            return TracksPage(
+                items=[],
+                page=params.page,
+                page_size=params.page_size,
+                total=0,
+                total_pages=0,
+                sort=params.sort,
+                provider=params.provider,
+                has_isrc=params.has_isrc,
+                search=params.search,
+                bpm_min=params.bpm_min,
+                bpm_max=params.bpm_max,
+                musical_key=params.musical_key,
+                camelot=params.camelot,
+                mood=params.mood,
+                vibe=params.vibe,
+            )
+
+        ordered = _apply_sort(filtered, sort=params.sort)
+        rows = session.execute(
+            ordered.offset((params.page - 1) * params.page_size).limit(params.page_size)
+        ).scalars().all()
 
     # Gather ISRCs + MBIDs for the page in a single round-trip (avoid N+1).
     track_ids = [pt.track_id for pt in rows]
@@ -316,8 +387,9 @@ def list_tracks(session: Session, *, params: ListParams) -> TracksPage:
     mb_by_track = {tid: val for tid, val in mb_rows}
 
     music_by_track = musical_attributes_for(session, track_ids)
+    character_by_track = {tid: _music_character_for_attrs(music_by_track.get(tid, {})) for tid in track_ids}
 
-    items = [_serialize(pt, isrc_by_track, mb_by_track, music_by_track) for pt in rows]
+    items = [_serialize(pt, isrc_by_track, mb_by_track, music_by_track, character_by_track) for pt in rows]
 
     return TracksPage(
         items=items,
@@ -332,6 +404,9 @@ def list_tracks(session: Session, *, params: ListParams) -> TracksPage:
         bpm_min=params.bpm_min,
         bpm_max=params.bpm_max,
         musical_key=params.musical_key,
+        camelot=params.camelot,
+        mood=params.mood,
+        vibe=params.vibe,
     )
 
 
@@ -443,11 +518,13 @@ def track_detail(session: Session, *, track_id: int) -> dict[str, Any]:
         }
 
     preferred = musical_attributes_for(session, [track_id]).get(track_id, {})
+    music_character = _music_character_for_attrs(preferred)
 
     return {
         "track_id": track.id,
         "canonical_title": track.canonical_title,
         "duration_ms": track.duration_ms,
+        "music_character": music_character,
         "provider_occurrences": [
             {
                 "id": pt.id,
@@ -480,7 +557,19 @@ def _safe_loads(text: Optional[str]) -> Optional[Any]:
 
 # ---- musical attributes ----------------------------------------------------
 
-_MUSIC_ATTRIBUTE_TYPES = ("tempo_bpm", "musical_key")
+_MUSIC_ATTRIBUTE_TYPES = (
+    "tempo_bpm",
+    "musical_key",
+    "time_signature",
+    "energy",
+    "danceability",
+    "valence",
+    "acousticness",
+    "instrumentalness",
+    "liveness",
+    "loudness_db",
+    "speechiness",
+)
 
 
 def _preferred_attr(rows: list[TrackAttribute], attribute_type: str) -> Optional[dict[str, Any]]:
@@ -512,14 +601,42 @@ def _format_attr(row: TrackAttribute) -> dict[str, Any]:
     }
 
 
+def _camelot_derived_from_key(musical_key_attr: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+    """Derive Camelot from preferred musical_key attribute."""
+    if not musical_key_attr or not musical_key_attr.get("value"):
+        return None
+    try:
+        from app.music_theory.camelot import canonical_to_camelot
+        from app.music_theory.keys import normalize_key
+
+        val = musical_key_attr["value"]
+        ck = normalize_key(val)
+        cam = canonical_to_camelot(ck)
+        if not cam:
+            return None
+        return {
+            "value": cam.code,
+            "source": "aion_music_theory",
+            "confidence": None,
+            "analysis_version": "m5-camelot-v1",
+            "observed_at": musical_key_attr.get("observed_at"),
+            "derived_from": "musical_key",
+            "number": cam.number,
+            "letter": cam.letter,
+            "open_key": cam.open_key,
+        }
+    except Exception:
+        return None
+
+
 def musical_attributes_for(
     session: Session, track_ids: list[int]
 ) -> dict[int, dict[str, Optional[dict[str, Any]]]]:
-    """Bulk-load tempo_bpm + musical_key for the given track IDs.
+    """Bulk-load musical attributes for the given track IDs.
 
-    Returns a dict keyed by track_id. Each value is ``{tempo_bpm, musical_key}``
-    where each entry is either a dict (``{value, source, confidence, ...}``) or
-    ``None`` when the track has no observation of that type.
+    Returns a dict keyed by track_id. Each value is a dict of
+    ``{attribute_type: preferred_row_or_None}`` for all types in
+    ``_MUSIC_ATTRIBUTE_TYPES`` plus derived ``camelot``.
     """
     if not track_ids:
         return {}
@@ -540,10 +657,53 @@ def musical_attributes_for(
     out: dict[int, dict[str, Optional[dict[str, Any]]]] = {}
     for tid in track_ids:
         attrs = by_track.get(tid, [])
-        out[tid] = {
-            "tempo_bpm": _preferred_attr(attrs, "tempo_bpm"),
-            "musical_key": _preferred_attr(attrs, "musical_key"),
-        }
+        base = {attr: _preferred_attr(attrs, attr) for attr in _MUSIC_ATTRIBUTE_TYPES}
+        base["camelot"] = _camelot_derived_from_key(base.get("musical_key"))
+        out[tid] = base
+    return out
+
+
+def _music_character_for_attrs(music_attrs: dict[str, Optional[dict[str, Any]]]) -> Optional[dict[str, Any]]:
+    """Derive character from preferred musical attributes."""
+    # Check if we have any audio to derive from
+    has_any = any(music_attrs.get(k) is not None for k in ("tempo_bpm", "energy", "danceability", "valence", "acousticness"))
+    if not has_any:
+        return None
+    try:
+        from app.music_character.features import build_features
+        from app.music_character import infer_character
+
+        # Build flat dict of values for build_features
+        flat: dict[str, Any] = {}
+        for k in ("tempo_bpm", "energy", "danceability", "valence", "acousticness", "instrumentalness", "liveness", "loudness_db", "speechiness"):
+            attr = music_attrs.get(k)
+            if attr and attr.get("value") is not None:
+                flat[k] = {"value": attr["value"]}
+            else:
+                flat[k] = None
+        # mode from musical_key
+        mk = music_attrs.get("musical_key")
+        if mk and isinstance(mk.get("value"), dict):
+            flat["musical_key"] = mk
+        # camelot pass through
+        if music_attrs.get("camelot"):
+            flat["camelot"] = music_attrs["camelot"]
+        features = build_features(flat)
+        profile = infer_character(features)
+        # If no meaningful scores (all ~0), treat as not derived?
+        # Check if at least one mood/vibe > 0.15
+        if not profile.moods and not profile.vibes:
+            return None
+        return profile.to_dict(min_score=0.15)
+    except Exception:
+        return None
+
+
+def music_character_for(session: Session, track_ids: list[int]) -> dict[int, Optional[dict[str, Any]]]:
+    attrs_map = musical_attributes_for(session, track_ids)
+    out: dict[int, Optional[dict[str, Any]]] = {}
+    for tid, attrs in attrs_map.items():
+        out[tid] = _music_character_for_attrs(attrs)
     return out
 
 
@@ -553,6 +713,7 @@ def _filter_tracks_by_music(
     bpm_min: Optional[int],
     bpm_max: Optional[int],
     musical_key: Optional[str],
+    camelot: Optional[str] = None,
 ):
     """Apply BPM/key filters to a ProviderTrack select statement.
 
@@ -594,4 +755,96 @@ def _filter_tracks_by_music(
         )
         stmt = stmt.where(ProviderTrack.track_id.in_(subq))
 
+    if camelot:
+        # Camelot is derived from musical_key; filter by mapping back to canonical display
+        try:
+            from app.music_theory.camelot import camelot_to_canonical
+
+            canonical = camelot_to_canonical(camelot.strip())
+            if canonical:
+                escaped = (
+                    canonical.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                )
+                like = f'%\\"display\\": \\"{escaped}\\"%'
+                subq = select(TrackAttribute.track_id).where(
+                    TrackAttribute.attribute_type == "musical_key",
+                    TrackAttribute.value_json.like(like, escape="\\"),
+                )
+                stmt = stmt.where(ProviderTrack.track_id.in_(subq))
+            else:
+                # Invalid camelot => no results
+                stmt = stmt.where(ProviderTrack.track_id.in_(select(TrackAttribute.track_id).where(False)))
+        except Exception:
+            pass
+
     return stmt
+
+
+def _bpm_for_track(session: Session, track_id: int) -> Optional[float]:
+    row = session.execute(
+        select(TrackAttribute.value_json).where(
+            TrackAttribute.track_id == track_id,
+            TrackAttribute.attribute_type == "tempo_bpm",
+        )
+    ).scalars().first()
+    if not row:
+        return None
+    try:
+        v = json.loads(row)
+        return float(v)
+    except Exception:
+        return None
+
+
+def track_compatibility(session: Session, *, track_id: int, other_track_id: int) -> dict[str, Any]:
+    track = session.get(Track, track_id)
+    other = session.get(Track, other_track_id)
+    if track is None or other is None:
+        raise ValueError("track not found")
+    attrs = musical_attributes_for(session, [track_id, other_track_id])
+    a = attrs.get(track_id, {})
+    b = attrs.get(other_track_id, {})
+    a_cam = (a.get("camelot") or {}).get("value")
+    b_cam = (b.get("camelot") or {}).get("value")
+    from app.music_theory.compatibility import compatibility, is_half_or_double_bpm
+
+    comp = compatibility(a_cam, b_cam)
+    bpm_a = _bpm_for_track(session, track_id)
+    bpm_b = _bpm_for_track(session, other_track_id)
+    half_double = is_half_or_double_bpm(bpm_a, bpm_b)
+    return {
+        "from_track_id": track_id,
+        "to_track_id": other_track_id,
+        "from_key": a.get("musical_key", {}).get("value") if a.get("musical_key") else None,
+        "to_key": b.get("musical_key", {}).get("value") if b.get("musical_key") else None,
+        "from_camelot": a_cam,
+        "to_camelot": b_cam,
+        "score": comp.score,
+        "relationship": comp.relationship,
+        "from_bpm": bpm_a,
+        "to_bpm": bpm_b,
+        "bpm_relationship": half_double,
+    }
+
+
+def compatible_tracks(session: Session, *, track_id: int, limit: int = 10) -> list[dict[str, Any]]:
+    base = session.get(Track, track_id)
+    if base is None:
+        raise ValueError("track not found")
+    # Candidate pool: all tracks with musical_key
+    candidate_ids = session.execute(
+        select(TrackAttribute.track_id).where(TrackAttribute.attribute_type == "musical_key").distinct()
+    ).scalars().all()
+    candidate_ids = [cid for cid in candidate_ids if cid != track_id]
+    if not candidate_ids:
+        return []
+    # Limit candidate pool size for performance (cap 500)
+    candidate_ids = candidate_ids[:500]
+    results = []
+    for cid in candidate_ids:
+        comp = track_compatibility(session, track_id=track_id, other_track_id=cid)
+        if comp["score"] > 0:
+            results.append(comp)
+    # Sort by score desc, then by track_id for stability
+    results.sort(key=lambda r: (-r["score"], r["to_track_id"]))
+    return results[:limit]
