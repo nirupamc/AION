@@ -1,0 +1,144 @@
+{
+  "milestone": "M4B",
+  "provider": "getsongbpm",
+  "status": "BLOCKED \u00e2\u20ac\u201d verification pending",
+  "live_api_key_configured": false,
+  "decision": "BLOCKED (verification) \u00e2\u20ac\u201d accept as primary once a key is available",
+  "generated_at": "2026-09-01T20:40:00Z",
+  "sample": {
+    "file": "fixtures/enrichment/m4a_soundcharts_sample.json",
+    "size": 10,
+    "strategy": "curated 10-track sample with text-search match scoring (reused from M4A)"
+  },
+  "live_probe": {
+    "status": "BLOCKED \u2014 GETSONGBPM_API_KEY not configured in .env",
+    "queried": 0,
+    "matched": 0,
+    "no_match": 0,
+    "ambiguous": 0,
+    "errors": 0,
+    "bpm_present": 0,
+    "key_present": 0,
+    "both_present": 0,
+    "median_latency_ms": null,
+    "note": "Run python -m app.cli getsongbpm-probe --limit 10 once GETSONGBPM_API_KEY is set in .env. Probe confirmed BLOCKED on this run.",
+    "status_detail": "CLI returned: BLOCKED \u2014 API KEY REQUIRED"
+  },
+  "coverage": {
+    "bpm": "not measured (no live key)",
+    "key": "not measured (no live key)"
+  },
+  "matching_quality": {
+    "unit_test_scenarios": [
+      {
+        "scenario": "exact title + exact artist",
+        "expected": "matched",
+        "score": ">= 0.80"
+      },
+      {
+        "scenario": "AION 'Acid Trip' vs candidate 'Acid Trip - Remix'",
+        "expected": "refused (version_ok=False)",
+        "score": "< 0.80"
+      },
+      {
+        "scenario": "AION 'Acid Trip (Remix)' vs candidate 'Acid Trip - Remix'",
+        "expected": "matched",
+        "score": ">= 0.80"
+      },
+      {
+        "scenario": "two equally strong candidates",
+        "expected": "ambiguous",
+        "score": "top - second < 0.08"
+      },
+      {
+        "scenario": "title match but no artist overlap",
+        "expected": "no_match or ambiguous",
+        "score": "< 0.80"
+      },
+      {
+        "scenario": "duration differs > 8s",
+        "expected": "refused",
+        "score": "-0.10 penalty"
+      }
+    ]
+  },
+  "production_persistence": {
+    "model": "TrackAttribute",
+    "attribute_types_written": [
+      "tempo_bpm",
+      "musical_key"
+    ],
+    "provenance": {
+      "source_type": "catalog_api",
+      "source_name": "getsongbpm",
+      "analysis_version": "m4b-getsongbpm-v1"
+    },
+    "idempotency_key": [
+      "track_id",
+      "attribute_type",
+      "source_name",
+      "analysis_version"
+    ],
+    "value_json_bpm": "json-encoded float (e.g. \"125.0\")",
+    "value_json_key": "json-encoded object {tonic, mode, display}",
+    "isolates_sources": true,
+    "promotes_to_current_only_when_no_other_current_exists": true
+  },
+  "rate_limits": {
+    "documented": "~3000 requests/hour (third-party observation)",
+    "aion_pacing_seconds": 1.0,
+    "cache_ttl_seconds": 60
+  },
+  "attribution": {
+    "required_by_provider": true,
+    "frontend_location": "footer",
+    "url": "https://getsongbpm.com",
+    "configurable_via": "GETSONGBPM_ATTRIBUTION_URL"
+  },
+  "api_endpoints": {
+    "search": "GET /search/?type=song&lookup=<query>&limit=<n>",
+    "song": "GET /song/?id=<song_id>",
+    "auth": "X-API-KEY header (preferred) or api_key URL param"
+  },
+  "frontend_changes": [
+    "library table: BPM / KEY / Source columns",
+    "filters: bpm_min / bpm_max / musical_key",
+    "detail drawer: MUSICAL ANALYSIS panel + attribute history",
+    "footer attribution to GetSongBPM"
+  ],
+  "tests": {
+    "backend_total": 174,
+    "backend_new": [
+      "tests/test_getsongbpm_source.py",
+      "tests/test_enrichment_matching.py",
+      "tests/test_enrichment_persistence.py",
+      "tests/test_library_musical_attributes.py"
+    ],
+    "backend_status": "all passing",
+    "frontend_typecheck": "passing",
+    "frontend_build": "passing"
+  },
+  "soundcharts_status": "READY (credentials present) \u00e2\u20ac\u201d runtime HTTP 401 invalid_client on token endpoint. Not debugged in M4B per brief.",
+  "recommendation": "ACCEPT AS PRIMARY once a real API key is configured and the 10-track live gate passes.",
+  "secrets": {
+    "note": "No secrets stored in this report."
+  },
+  "status_by_item": {
+    "GetSongBPM source code": "IMPLEMENTED",
+    "Matching logic": "IMPLEMENTED",
+    "Persistence code": "IMPLEMENTED",
+    "CLI commands": "IMPLEMENTED",
+    "API exposure": "IMPLEMENTED",
+    "Frontend BPM/Key UI": "IMPLEMENTED",
+    "M4B report": "IMPLEMENTED",
+    "Backend tests": "VERIFIED (174 passed)",
+    "Frontend typecheck": "VERIFIED (passing)",
+    "Frontend build": "VERIFIED (passing)",
+    "Soundcharts adapter": "PRESENT (HTTP 401 runtime, not debugged)",
+    "Live GetSongBPM probe": "BLOCKED \u2014 no GETSONGBPM_API_KEY",
+    "Production enrichment": "BLOCKED \u2014 no GETSONGBPM_API_KEY",
+    "Idempotency verification": "CODE VERIFIED, not LIVE TESTED",
+    "API output verification": "CODE VERIFIED, not LIVE TESTED",
+    "Frontend live verification": "CODE VERIFIED, not LIVE TESTED"
+  }
+}

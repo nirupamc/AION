@@ -1,0 +1,107 @@
+{
+  "selected_at": "2026-08-31T17:30:00Z",
+  "strategy": "curated 10-track sample for M4A Soundcharts spike",
+  "size": 10,
+  "tracks": [
+    {
+      "track_id": 2630,
+      "title": "I Can't Help Myself (Sugar Pie, Honey Bunch)",
+      "artist": "Four Tops",
+      "album": "Four Tops - Second Album",
+      "release_date": "1965-11-13",
+      "duration_ms": 160280,
+      "spotify_id": "6b6IMqP565TbtFFZg9iFf3",
+      "isrc": "USMO16582593"
+    },
+    {
+      "track_id": 2081,
+      "title": "Everybody Talks",
+      "artist": "Neon Trees",
+      "album": "Picture Show",
+      "release_date": "2012-01-01",
+      "duration_ms": 177280,
+      "spotify_id": "2iUmqdfGZcHIhS3b9E9EWq",
+      "isrc": "USUM71119189"
+    },
+    {
+      "track_id": 2138,
+      "title": "Sedona",
+      "artist": "Houndmouth",
+      "album": "Little Neon Limelight",
+      "release_date": "2015-03-16",
+      "duration_ms": 239880,
+      "spotify_id": "65T1aY3I9qfNUDVAnaM9bq",
+      "isrc": "GBCVZ1403597"
+    },
+    {
+      "track_id": 1595,
+      "title": "COFFEE BEAN",
+      "artist": "Travis Scott",
+      "album": "ASTROWORLD",
+      "release_date": "2018-08-03",
+      "duration_ms": 209115,
+      "spotify_id": "6vnfObZ4Ys70SBAtti1xZ9",
+      "isrc": "USSM11806672"
+    },
+    {
+      "track_id": 1912,
+      "title": "Golden",
+      "artist": "Harry Styles",
+      "album": "Fine Line",
+      "release_date": "2019-12-13",
+      "duration_ms": 208917,
+      "spotify_id": "45S5WTQEGOB1VHr1Q4FuPl",
+      "isrc": "USSM11912586"
+    },
+    {
+      "track_id": 1910,
+      "title": "Everybody",
+      "artist": "Mac Miller",
+      "album": "Circles",
+      "release_date": "2020-01-17",
+      "duration_ms": 256506,
+      "spotify_id": "1OuN92HcVG6NVpWbeESNB3",
+      "isrc": "USWB11801012"
+    },
+    {
+      "track_id": 2614,
+      "title": "Blue Skies",
+      "artist": "dexter in the newsagent",
+      "album": "Blue Skies",
+      "release_date": "2021-06-02",
+      "duration_ms": 159490,
+      "spotify_id": "4e11dFRYAcJyvIv9Y35ERA",
+      "isrc": "GBKPL2150741"
+    },
+    {
+      "track_id": 974,
+      "title": "Strange Love - Single Edit",
+      "artist": "Cautious Clay, Saba",
+      "album": "Strange Love - Single Edit",
+      "release_date": "2021-06-01",
+      "duration_ms": 181483,
+      "spotify_id": "0dgehlr08kKoyl2nG7Dhv4",
+      "isrc": "QM6P42134545"
+    },
+    {
+      "track_id": 740,
+      "title": "Save a Soul",
+      "artist": "nimino",
+      "album": "Woods",
+      "release_date": "2022-11-16",
+      "duration_ms": 262015,
+      "spotify_id": "7bDDYji600PxR0F921ctVN",
+      "isrc": "QMDA62294501"
+    },
+    {
+      "track_id": 2307,
+      "title": "She's A 10 But (Remix) (feat. Yung Gravy)",
+      "artist": "ARTAN, Yung Gravy",
+      "album": "She's A 10 But (Remix) (feat. Yung Gravy)",
+      "release_date": "2023-02-15",
+      "duration_ms": 169005,
+      "spotify_id": "0aywJ1yyg6OzgFCxrrUd7R",
+      "isrc": "GBUM72300639"
+    }
+  ]
+}
